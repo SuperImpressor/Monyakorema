@@ -49,6 +49,7 @@ body{font-family:Arial,sans-serif}
 
 .notification-badge{min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#ef4444;color:#fff;font-size:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center}
 .global-search-wrap{position:relative}
+.search-field-icon{position:absolute;left:.75rem;top:50%;transform:translateY(-50%);pointer-events:none}
 .global-search-results{position:absolute;top:calc(100% + 6px);right:0;left:0;min-width:300px;max-height:60vh;overflow:auto;background:#fff;color:#0f172a;border:1px solid #cbd5e1;border-radius:12px;box-shadow:0 20px 40px rgba(0,0,0,.18);z-index:100}
 .global-search-item{display:block;width:100%;text-align:left;padding:10px 12px;border-bottom:1px solid #e2e8f0}.global-search-item:last-child{border-bottom:none}.global-search-item:hover{background:#f8fafc}
 .chart-box{height:260px;position:relative}.chart-box canvas{width:100%;height:100%;display:block}
@@ -216,7 +217,7 @@ Jisajili kama Mwanafamilia
 </div>
 <div class="flex items-center gap-2 sm:gap-3 min-w-0">
 <div class="global-search-wrap hidden sm:block w-[220px] lg:w-[300px]">
-<input id="globalSearchInput" oninput="globalSearch(this.value)" class="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder:text-slate-300 px-3 py-2 text-sm outline-none focus:bg-white/15" placeholder="🔎 Tafuta mfumo mzima...">
+<div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" aria-hidden="true">🔎</span><input id="globalSearchInput" oninput="globalSearch(this.value)" class="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder:text-slate-300 pl-10 pr-3 py-2 text-sm outline-none focus:bg-white/15" placeholder="Tafuta mfumo mzima..." aria-label="Tafuta mfumo mzima"></div>
 <div id="globalSearchResults" class="global-search-results hidden"></div>
 </div>
 <button id="headerNotificationsButton" type="button" onclick="toggleNotifications()" class="relative inline-flex items-center justify-center w-9 h-9 rounded-lg bg-white/10 hover:bg-white/20" title="Taarifa">🔔<span id="notificationBadge" class="notification-badge absolute -top-1 -right-1 hidden">0</span></button>
@@ -248,7 +249,7 @@ Jisajili kama Mwanafamilia
       <button type="button" onclick="closeSidebar()" aria-label="Funga menyu" class="md:hidden w-9 h-9 rounded-lg hover:bg-slate-100 text-xl">×</button>
     </div>
     <div class="sm:hidden mb-3">
-      <input id="globalSearchMobile" oninput="globalSearch(this.value)" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="🔎 Tafuta mfumo mzima...">
+      <div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" aria-hidden="true">🔎</span><input id="globalSearchMobile" oninput="globalSearch(this.value)" class="w-full border rounded-lg pl-10 pr-3 py-2 text-sm" placeholder="Tafuta mfumo mzima..." aria-label="Tafuta mfumo mzima"></div>
       <div id="globalSearchResultsMobile" class="bg-white rounded-lg mt-2 border max-h-64 overflow-y-auto hidden"></div>
     </div>
     <div class="space-y-1">
@@ -352,20 +353,20 @@ Jisajili kama Mwanafamilia
 
 <div class="mt-6 bg-white rounded-xl shadow p-5">
 <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
-<div><h3 class="font-bold text-lg">Hali ya Mchango wa Mwezi Huu</h3><p id="dashboardCurrentMonthLabel" class="text-sm text-slate-500 mt-1">Inapakia...</p><p class="text-xs text-slate-400 mt-1">Sehemu hii ni ya mwezi huu pekee; muhtasari hapo juu unaonyesha hali ya jumla hadi sasa.</p></div>
+<div><h3 class="font-bold text-lg">Hali ya Mchango wa Mwezi Huu</h3><p id="dashboardCurrentMonthLabel" class="text-sm text-slate-500 mt-1">Inapakia...</p><p class="text-xs text-slate-400 mt-1">Fedha zilizopokelewa mwezi huu zinaonyeshwa tofauti na wajibu wa mwezi uliolipiwa baada ya madeni ya zamani kutengwa.</p></div>
 <span id="dashboardCurrentMonthRate" class="text-2xl font-bold text-blue-700">0%</span>
 </div>
 <div class="w-full h-4 bg-slate-200 rounded-full overflow-hidden"><div id="dashboardCurrentMonthBar" class="h-full bg-blue-600 rounded-full transition-all duration-500" style="width:0%"></div></div>
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
 <div class="rounded-lg bg-blue-50 p-4"><p class="text-xs text-slate-500">Wajibu wa mwezi</p><p id="dashboardCurrentMonthDue" class="text-xl font-bold mt-1">TZS 0</p></div>
 <div class="rounded-lg bg-emerald-50 p-4"><p class="text-xs text-slate-500">Malipo yaliyorekodiwa</p><p id="dashboardCurrentMonthPaid" class="text-xl font-bold mt-1">TZS 0</p></div>
-<div class="rounded-lg bg-green-50 p-4"><p class="text-xs text-slate-500">Waliokamilisha</p><p id="dashboardCurrentMonthPaidMembers" class="text-2xl font-bold mt-1">0</p><p id="dashboardCurrentMonthMembersSummary" class="text-xs text-slate-500 mt-1">0 kati ya 0 wenye wajibu</p></div>
+<div class="rounded-lg bg-green-50 p-4"><p class="text-xs text-slate-500">Waliokamilisha wajibu wa mwezi</p><p id="dashboardCurrentMonthPaidMembers" class="text-2xl font-bold mt-1">0</p><p id="dashboardCurrentMonthMembersSummary" class="text-xs text-slate-500 mt-1">0 kati ya 0 wenye wajibu</p></div>
 <div class="rounded-lg bg-amber-50 p-4"><p class="text-xs text-slate-500">Wajibu uliobaki</p><p id="dashboardCurrentMonthRemaining" class="text-xl font-bold mt-1">TZS 0</p></div>
 </div>
 </div>
 <div class="bg-white rounded-xl shadow mt-6 overflow-hidden">
 <div class="p-5 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-<div><h3 class="font-bold text-lg">Shughuli za Hivi Karibuni</h3><p class="text-sm text-slate-500 mt-1">Miamala ya mwisho iliyorekodiwa kwenye mfumo.</p></div>
+<div><h3 class="font-bold text-lg">Michango ya Hivi Karibuni</h3><p class="text-sm text-slate-500 mt-1">Miamala ya mwisho iliyorekodiwa kwenye mfumo.</p></div>
 <button onclick="showPage('reports')" class="text-blue-600 font-bold text-sm">Angalia Ripoti →</button>
 </div>
 <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-100"><tr><th class="text-left p-3">Tarehe</th><th class="text-left p-3">Aina</th><th class="text-left p-3">Maelezo</th><th class="text-right p-3">Kiasi</th></tr></thead><tbody id="dashboardRecentActivity"><tr><td colspan="4" class="p-6 text-center text-slate-500">Inapakia...</td></tr></tbody></table></div>
@@ -401,7 +402,7 @@ Jisajili kama Mwanafamilia
 <div class="bg-white rounded-xl shadow p-4"><p class="text-xs text-slate-500">⚪ Hali Haijaainishwa</p><p id="familyStatUnknownLife" class="text-2xl font-bold mt-1">0</p></div>
 </div>
 <div class="bg-white rounded-xl shadow overflow-hidden">
-<div class="p-4 border-b bg-slate-50"><div class="grid grid-cols-1 md:grid-cols-4 gap-3"><input id="familySearch" oninput="filterFamily()" class="w-full border rounded-lg px-4 py-3 bg-white" placeholder="Tafuta jina, simu, ndoa au umri..." aria-label="Tafuta mwanafamilia kwa jina au simu"><select id="familyGenderFilter" onchange="filterFamily()" class="w-full border rounded-lg px-4 py-3 bg-white"><option value="">Jinsia zote</option><option value="me">Wanaume (Me)</option><option value="ke">Wanawake (Ke)</option></select><select id="familyLifeFilter" onchange="filterFamily()" class="w-full border rounded-lg px-4 py-3 bg-white"><option value="">Hali zote</option><option value="Hai">Walio hai</option><option value="Amefariki">Waliofariki</option><option value="unknown">Haijaainishwa</option></select><button type="button" onclick="clearFamilyFilters()" class="w-full bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 px-4 py-3 rounded-lg font-bold">Futa vichujio</button></div><div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mt-2"><p id="familyFilterSummary" class="text-xs text-slate-500">Inaonyesha wanafamilia wote.</p><p id="familyLastUpdated" class="text-xs text-slate-500">Taarifa hazijasasishwa bado.</p></div></div>
+<div class="p-4 border-b bg-slate-50"><div class="grid grid-cols-1 md:grid-cols-4 gap-3"><div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" aria-hidden="true">🔎</span><input id="familySearch" oninput="filterFamily()" class="w-full border rounded-lg pl-10 pr-4 py-3 bg-white" placeholder="Tafuta jina, simu, ndoa au umri..." aria-label="Tafuta mwanafamilia kwa jina au simu"></div><select id="familyGenderFilter" onchange="filterFamily()" class="w-full border rounded-lg px-4 py-3 bg-white"><option value="">Jinsia zote</option><option value="me">Wanaume (Me)</option><option value="ke">Wanawake (Ke)</option></select><select id="familyLifeFilter" onchange="filterFamily()" class="w-full border rounded-lg px-4 py-3 bg-white"><option value="">Hali zote</option><option value="Hai">Walio hai</option><option value="Amefariki">Waliofariki</option><option value="unknown">Haijaainishwa</option></select><button type="button" onclick="clearFamilyFilters()" class="w-full bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 px-4 py-3 rounded-lg font-bold">Futa vichujio</button></div><div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mt-2"><p id="familyFilterSummary" class="text-xs text-slate-500">Inaonyesha wanafamilia wote.</p><p id="familyLastUpdated" class="text-xs text-slate-500">Taarifa hazijasasishwa bado.</p></div></div>
 <div class="overflow-x-auto">
 <table class="w-full text-sm border-collapse">
 <thead class="bg-slate-100">
@@ -484,7 +485,7 @@ Jisajili kama Mwanafamilia
 <div class="bg-white rounded-xl shadow p-4 mb-5"><div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
 <div><label class="text-sm font-semibold">Kuanzia</label><input id="disasterFrom" type="date" class="w-full border rounded-lg px-3 py-2 mt-1"></div>
 <div><label class="text-sm font-semibold">Hadi</label><input id="disasterTo" type="date" class="w-full border rounded-lg px-3 py-2 mt-1"></div>
-<div><label class="text-sm font-semibold">Tafuta</label><input id="disasterSearch" oninput="renderDisasterTable()" class="w-full border rounded-lg px-3 py-2 mt-1" placeholder="Jina, aina au risiti..."></div>
+<div><label class="text-sm font-semibold">Tafuta</label><div class="relative mt-1"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" aria-hidden="true">🔎</span><input id="disasterSearch" oninput="renderDisasterTable()" class="w-full border rounded-lg pl-10 pr-3 py-2" placeholder="Jina, aina au risiti..." aria-label="Tafuta maafa kwa jina, aina au risiti"></div></div>
 <div class="flex items-end"><button onclick="loadDisasterAssistance()" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold">Chuja</button></div>
 </div></div>
 <div id="disasterSummary" class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5"></div>
@@ -522,13 +523,13 @@ Jisajili kama Mwanafamilia
 <div id="reportSummary" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-5"></div>
 <div class="bg-white rounded-xl shadow p-5 mb-5">
   <div class="flex items-center justify-between gap-3 mb-4">
-    <div><h3 class="font-bold">Muhtasari wa Utendaji wa Kipindi</h3><p class="text-xs text-slate-500 mt-1">Ulinganisho wa fedha zilizokusanywa na wajibu wa kipindi kilichochaguliwa.</p></div>
+    <div><h3 class="font-bold">Muhtasari wa Utendaji wa Kipindi</h3><p class="text-xs text-slate-500 mt-1">Ulinganisho wa wajibu wa kipindi na kiasi kilichotengwa kwa miezi hiyo baada ya kulipa madeni ya zamani kwanza.</p></div>
     <span id="reportCollectionRate" class="text-lg font-bold text-blue-700">0%</span>
   </div>
   <div id="reportPeriodInsights" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3"></div>
 </div>
 <div id="reportContributionLedger" class="bg-white rounded-xl shadow mt-5 p-5">
-<h3 class="font-bold mb-2">Hali ya Mchango ya Wanafamilia</h3><p class="text-xs text-slate-500 mb-4">Ledger hii inaonyesha wajibu wa kila mwanafamilia kuanzia mwanzo wa michango (September 2026) hadi mwezi wa sasa. Vichujio vya tarehe hapo juu vinaathiri ripoti za kipindi, si hali ya jumla ya wajibu wa mchango.</p>
+<h3 class="font-bold mb-2">Hali ya Mchango ya Wanafamilia</h3><p class="text-xs text-slate-500 mb-4">Ledger hii inaonyesha wajibu wa wanafamilia wenye sifa ya kuchangia kuanzia mwezi wao rasmi wa kuanza hadi mwezi wa sasa. Malipo hutengwa kulipa wajibu wa miezi ya zamani kwanza. Vichujio vya tarehe vinaathiri ripoti za kipindi, si hali ya jumla ya wajibu wa mchango.</p>
 <div id="reportContributionLedgerSummary" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5"></div>
 <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-100"><tr><th class="text-left p-3">Mwanafamilia</th><th class="text-center p-3">Miezi ya kuchangia</th><th class="text-center p-3">Wajibu</th><th class="text-center p-3">Kiasi alichochanga</th><th class="text-center p-3">Kiasi anachodaiwa</th><th class="text-center p-3">Ziada</th><th class="text-center p-3">Makato</th><th class="text-center p-3">Salio</th></tr></thead><tbody id="reportContributionLedgerTable"></tbody></table></div>
 </div>
@@ -573,7 +574,7 @@ Jisajili kama Mwanafamilia
     </div>
   </div>
   <div class="flex flex-col sm:flex-row gap-2 mb-3">
-    <input id="reportFollowupSearch" oninput="filterContributionFollowup()" type="search" placeholder="Tafuta jina la mwanafamilia..." class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200">
+    <div class="relative flex-1"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" aria-hidden="true">🔎</span><input id="reportFollowupSearch" oninput="filterContributionFollowup()" type="search" placeholder="Tafuta jina la mwanafamilia..." class="w-full border border-slate-200 rounded-lg pl-10 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" aria-label="Tafuta jina la mwanafamilia"></div>
     <button type="button" onclick="clearContributionFollowupSearchV86()" class="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold">Futa utafutaji</button>
   </div>
   <div class="flex items-center justify-between gap-2 mb-3 text-xs text-slate-500">
@@ -601,7 +602,7 @@ Jisajili kama Mwanafamilia
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
     <div class="rounded-lg bg-slate-50 p-4"><div class="text-xs text-slate-500">Wajibu</div><div id="currentMonthDue" class="text-xl font-bold mt-1">TZS 0</div></div>
     <div class="rounded-lg bg-slate-50 p-4"><div class="text-xs text-slate-500">Kimekusanywa</div><div id="currentMonthPaid" class="text-xl font-bold mt-1">TZS 0</div></div>
-    <div class="rounded-lg bg-slate-50 p-4"><div class="text-xs text-slate-500">Waliolipa</div><div id="currentMonthPayers" class="text-xl font-bold mt-1">0</div></div>
+    <div class="rounded-lg bg-slate-50 p-4"><div class="text-xs text-slate-500">Waliokamilisha wajibu</div><div id="currentMonthPayers" class="text-xl font-bold mt-1">0</div></div>
     <div class="rounded-lg bg-slate-50 p-4"><div class="text-xs text-slate-500">Bado hawajakamilisha</div><div id="currentMonthOutstanding" class="text-xl font-bold mt-1">TZS 0</div></div>
   </div>
 </div>
@@ -632,7 +633,7 @@ Jisajili kama Mwanafamilia
     </div>
     <div class="bg-white rounded-xl shadow p-4 mb-4">
       <div class="v23-filter">
-        <input id="v23AuditSearch" oninput="v23RenderAudit()" class="border rounded-lg px-3 py-2" placeholder="Tafuta mtumiaji, jedwali au ID...">
+        <div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" aria-hidden="true">🔎</span><input id="v23AuditSearch" oninput="v23RenderAudit()" class="border rounded-lg pl-10 pr-3 py-2" placeholder="Tafuta mtumiaji, jedwali au ID..." aria-label="Tafuta audit trail"></div>
         <select id="v23AuditAction" onchange="v23RenderAudit()" class="border rounded-lg px-3 py-2"><option value="">Vitendo vyote</option><option value="INSERT">Imeongezwa</option><option value="UPDATE">Imehaririwa</option><option value="DELETE">Imefutwa</option><option value="CHANGE_ROLE">Role imebadilishwa</option><option value="ENABLE_USER">Akaunti imewashwa</option><option value="DISABLE_USER">Akaunti imezimwa</option><option value="RESET_PASSWORD">Neno siri limebadilishwa</option></select>
         <select id="v23AuditTable" onchange="v23RenderAudit()" class="border rounded-lg px-3 py-2"><option value="">Majedwali yote</option><option value="contributions">Michango</option><option value="disaster_assistance">Msaada wa Maafa</option><option value="fund_expenses">Matumizi ya Mfuko</option><option value="family_members">Wanafamilia</option><option value="profiles">Profiles</option><option value="auth.users">Akaunti za Auth</option></select>
         <input id="v23AuditFrom" type="date" onchange="v23RenderAudit()" class="border rounded-lg px-3 py-2" title="Kuanzia tarehe">
@@ -651,7 +652,7 @@ Jisajili kama Mwanafamilia
     </div>
     <div class="bg-white rounded-xl shadow p-4 mb-4">
       <div class="v23-filter">
-        <input id="v23HistorySearch" oninput="v23RenderHistory()" class="border rounded-lg px-3 py-2" placeholder="Tafuta aina, mtumiaji, risiti au kumbukumbu...">
+        <div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" aria-hidden="true">🔎</span><input id="v23HistorySearch" oninput="v23RenderHistory()" class="border rounded-lg pl-10 pr-3 py-2" placeholder="Tafuta aina, mtumiaji, risiti au kumbukumbu..." aria-label="Tafuta historia ya miamala"></div>
         <select id="v23HistoryType" onchange="v23RenderHistory()" class="border rounded-lg px-3 py-2"><option value="">Aina zote</option><option value="Mchango">Mchango</option><option value="Msaada wa Maafa">Msaada wa Maafa</option><option value="Matumizi ya Mfuko">Matumizi ya Mfuko</option></select>
         <input id="v23HistoryFrom" type="date" onchange="v23RenderHistory()" class="border rounded-lg px-3 py-2">
         <input id="v23HistoryTo" type="date" onchange="v23RenderHistory()" class="border rounded-lg px-3 py-2">
@@ -689,9 +690,9 @@ Jisajili kama Mwanafamilia
 </div>
 <div class="bg-white rounded-xl shadow overflow-hidden">
 <div class="p-4 border-b">
-<input id="contributionSearch" oninput="filterContributions()"
- class="w-full border rounded-lg px-4 py-3"
- placeholder="Tafuta jina, simu au namba ya risiti...">
+<div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" aria-hidden="true">🔎</span><input id="contributionSearch" oninput="filterContributions()"
+ class="w-full border rounded-lg pl-10 pr-4 py-3"
+ placeholder="Tafuta jina, simu au namba ya risiti..." aria-label="Tafuta mchango kwa jina, simu au namba ya risiti"></div>
 </div>
 <div class="overflow-x-auto">
 <table class="w-full text-sm">
@@ -731,7 +732,7 @@ Jisajili kama Mwanafamilia
 </div>
 <div class="bg-white rounded-xl shadow p-4 mb-4">
 <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-<div class="md:col-span-2"><label class="block text-xs font-semibold text-slate-500 mb-1">Tafuta mtumiaji</label><input id="usersSearch" oninput="renderUsers()" type="search" placeholder="Jina, simu au role..." class="w-full border rounded-lg px-3 py-2"></div>
+<div class="md:col-span-2"><label class="block text-xs font-semibold text-slate-500 mb-1">Tafuta mtumiaji</label><div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" aria-hidden="true">🔎</span><input id="usersSearch" oninput="renderUsers()" type="search" placeholder="Jina, simu au role..." class="w-full border rounded-lg pl-10 pr-3 py-2" aria-label="Tafuta mtumiaji kwa jina, simu au role"></div></div>
 <div><label class="block text-xs font-semibold text-slate-500 mb-1">Chuja role</label><select id="usersRoleFilter" onchange="renderUsers()" class="w-full border rounded-lg px-3 py-2"><option value="">Roles zote</option><option>Administrator</option><option>Mwenyekiti</option><option>Katibu</option><option>Mhasibu</option><option>Mwanafamilia</option></select></div>
 </div>
 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-3"><p id="usersResultSummary" class="text-xs text-slate-500">Inaonyesha 0 kati ya 0 watumiaji.</p><button type="button" onclick="clearUsersFilters()" class="text-sm text-blue-700 font-semibold">Futa vichujio</button></div>
@@ -745,6 +746,7 @@ Jisajili kama Mwanafamilia
 <th class="text-left p-3">Simu</th>
 <th class="text-left p-3">Role</th>
 <th class="text-left p-3">Hali</th>
+<th class="text-left p-3">Uhakiki wa Mwanafamilia</th>
 <th class="text-right p-3">Vitendo</th>
 </tr>
 </thead>
@@ -853,6 +855,21 @@ Badili Neno Siri
 <option value="Mgane">Mgane</option>
 <option value="Wameachana">Wameachana</option>
 </select>
+<label class="block text-sm font-semibold mb-1">Hali ya wajibu wa mchango <span class="text-red-600">*</span></label>
+<select id="familyContributionEligibility" onchange="updateContributionEligibilityFields()" class="w-full border rounded-lg px-3 py-3 mb-2" required>
+<option value="">Chagua hali ya mchango</option>
+<option value="married">Anawajibika — ameoa/ameolewa</option>
+<option value="voluntary">Anawajibika — hajaoa/hajaolewa lakini amechagua kuchangia</option>
+<option value="legacy_eligible">Anawajibika — uamuzi wa awali wa familia</option>
+<option value="not_eligible">Bado hastahili kuchangia</option>
+<option value="exempt">Ameidhinishiwa msamaha wa mchango</option>
+</select>
+<p class="text-xs text-slate-500 mb-4">Ndoa au hiari ya kuchangia ndiyo sababu za kawaida za kuanza wajibu. Chagua kutostahili au msamaha ikiwa familia imeamua hivyo.</p>
+<div id="familyContributionStartWrap" class="hidden">
+<label class="block text-sm font-semibold mb-1">Mwezi wa kuanza kuchangia <span class="text-red-600">*</span></label>
+<input id="familyContributionStartMonth" type="month" min="2026-09" class="w-full border rounded-lg px-3 py-3 mb-2">
+<p class="text-xs text-slate-500 mb-4">Chagua mwezi ambao familia imeidhinisha kuwa mwanzo wa wajibu. Unaweza kuwa Septemba 2026 hata kama usajili umefanyika baadaye.</p>
+</div>
 <label class="block text-sm font-semibold mb-1">Hali ya uhai</label>
 <select id="familyLifeStatus" class="w-full border rounded-lg px-3 py-3 mb-5">
 <option value="Haijulikani">Hajaainishwa</option>
@@ -1823,172 +1840,207 @@ async function refreshDashboard(){
     }
 }
 
+async function fetchAllDashboardRows(tableName, columns, configureQuery=null){
+    const all=[];
+    const pageSize=1000;
+    for(let offset=0;;offset+=pageSize){
+        let query=supabaseClient.from(tableName).select(columns);
+        if(typeof configureQuery==='function') query=configureQuery(query);
+        const {data,error}=await query.range(offset,offset+pageSize-1);
+        if(error) return {data:null,error};
+        const batch=Array.isArray(data)?data:[];
+        all.push(...batch);
+        if(batch.length<pageSize) break;
+    }
+    return {data:all,error:null};
+}
+
+function normalizeDashboardMemberName(person){
+    return [person?.first_name,person?.middle_name,person?.last_name]
+        .filter(Boolean).join(' ').trim().toLowerCase().replace(/\s+/g,' ');
+}
+
 async function loadDashboard(){
     ensureClient();
+    const updated=document.getElementById('dashboardLastUpdated');
+    if(updated) updated.textContent='Inapakia taarifa zote...';
 
-    const members=await supabaseClient
-        .from("family_members")
-        .select("id,first_name,middle_name,last_name,created_at");
-
-    const membersEl=document.getElementById("dashboardMembers");
-    const memberList=members.data||[];
-    if(membersEl) membersEl.textContent=memberList.length;
-
-    const [contributionResult,expenseResult,disasterResult,deductionResult]=await Promise.all([
-        supabaseClient.from("contributions").select("id,family_member_id,amount,contributor_type,contribution_date,receipt_number,first_name,middle_name,last_name,payment_method,is_deleted").eq("is_deleted",false).order("contribution_date",{ascending:false}).limit(1000),
-        supabaseClient.from("fund_expenses").select("id,amount,expense_date,category,description,is_deleted").eq("is_deleted",false).order("expense_date",{ascending:false}).limit(100),
-        supabaseClient.from("disaster_assistance").select("id,amount,assistance_date,disaster_type,payment_status,status,is_deleted").eq("is_deleted",false).order("assistance_date",{ascending:false}).limit(100),
-        supabaseClient.from("disaster_contribution_deductions").select("id,amount,deduction_date,is_deleted").eq("is_deleted",false).order("deduction_date",{ascending:false}).limit(100)
+    // Soma kurasa zote badala ya kutumia .limit(100/1000), ambayo ingeacha
+    // jumla pungufu kadiri historia ya mfumo inavyokua.
+    const [membersResult,contributionResult,expenseResult,disasterResult,deductionResult]=await Promise.all([
+        fetchAllDashboardRows('family_members','id,first_name,middle_name,last_name,phone,is_active,created_at,contribution_eligibility,contribution_start_month',q=>q.eq('is_active',true).order('id',{ascending:true})),
+        fetchAllDashboardRows('contributions','id,family_member_id,amount,contributor_type,contribution_date,receipt_number,first_name,middle_name,last_name,phone,payment_method,is_deleted',q=>q.eq('is_deleted',false).order('contribution_date',{ascending:false})),
+        fetchAllDashboardRows('fund_expenses','id,amount,expense_date,category,description,is_deleted',q=>q.eq('is_deleted',false).order('expense_date',{ascending:false})),
+        fetchAllDashboardRows('disaster_assistance','id,amount,assistance_date,disaster_type,payment_status,status,is_deleted',q=>q.eq('is_deleted',false).order('assistance_date',{ascending:false})),
+        fetchAllDashboardRows('disaster_contribution_deductions','id,amount,deduction_date,is_deleted',q=>q.eq('is_deleted',false).order('deduction_date',{ascending:false}))
     ]);
-    const error=contributionResult.error||expenseResult.error||disasterResult.error||deductionResult.error;
-    const data=contributionResult.data||[];
-
+    const error=membersResult.error||contributionResult.error||expenseResult.error||disasterResult.error||deductionResult.error;
     if(error){
-        console.error("Dashboard contributions:",error);
+        console.error('Dashboard load error:',error);
+        if(updated) updated.textContent='Imeshindikana kusasisha dashibodi: '+(error.message||'Hitilafu ya kupakia taarifa.');
         return;
     }
 
-    const rows=data||[];
+    const memberList=membersResult.data||[];
+    const rows=contributionResult.data||[];
     const expenses=expenseResult.data||[];
     const disasterRows=disasterResult.data||[];
     const deductionRows=deductionResult.data||[];
-    const total=rows.reduce((sum,row)=>sum+Number(row.amount||0),0);
-    const totalExpenses=expenses.reduce((sum,row)=>sum+Number(row.amount||0),0);
-    const totalDisasterPaid=disasterRows.filter(row=>row.payment_status==='Imelipwa').reduce((sum,row)=>sum+Number(row.amount||0),0);
-    const totalDeductions=deductionRows.reduce((sum,row)=>sum+Number(row.amount||0),0);
-    const familyRows=rows.filter(row=>row.contributor_type==="Mwanafamilia");
-    const stakeholderRows=rows.filter(row=>row.contributor_type!=="Mwanafamilia");
-    const familyAmount=familyRows.reduce((sum,row)=>sum+Number(row.amount||0),0);
-    const stakeholderAmount=stakeholderRows.reduce((sum,row)=>sum+Number(row.amount||0),0);
-    const stakeholderCount=stakeholderRows.length;
+    const setDashText=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=String(value);};
+    const setDashMoney=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent='TZS '+money(value);};
+
+    setDashText('dashboardMembers',memberList.length);
+    const total=rows.reduce((sum,row)=>sum+Math.max(0,Number(row.amount||0)),0);
+    const totalExpenses=expenses.reduce((sum,row)=>sum+Math.max(0,Number(row.amount||0)),0);
+    const totalDisasterPaid=disasterRows.filter(row=>row.payment_status==='Imelipwa').reduce((sum,row)=>sum+Math.max(0,Number(row.amount||0)),0);
+    const totalDeductions=deductionRows.reduce((sum,row)=>sum+Math.max(0,Number(row.amount||0)),0);
+    const familyRows=rows.filter(row=>row.contributor_type==='Mwanafamilia');
+    const stakeholderRows=rows.filter(row=>row.contributor_type!=='Mwanafamilia');
+    const familyAmount=familyRows.reduce((sum,row)=>sum+Math.max(0,Number(row.amount||0)),0);
+    const stakeholderAmount=stakeholderRows.reduce((sum,row)=>sum+Math.max(0,Number(row.amount||0)),0);
+    const stakeholderKeys=new Set();
+    stakeholderRows.forEach(row=>{
+        const name=normalizeDashboardMemberName(row);
+        const phone=String(row.phone||'').replace(/\s+/g,'').trim();
+        const key=phone?'phone:'+phone:(name?'name:'+name:'transaction:'+row.id);
+        stakeholderKeys.add(key);
+    });
+    const stakeholderCount=stakeholderKeys.size;
     const target=Number(contributionTarget||0);
     const remaining=Math.max(target-total,0);
     const progress=target>0?Math.min(100,(total/target)*100):0;
 
-    const balanceResult=await supabaseClient.rpc("get_fund_balance");
+    setDashText('dashboardContributions',rows.length);
+    setDashMoney('dashboardAmount',total);
+    setDashMoney('dashboardFamilyAmount',familyAmount);
+    setDashText('dashboardStakeholders',stakeholderCount);
+    setDashMoney('dashboardStakeholderAmount',stakeholderAmount);
+    setDashMoney('dashboardTarget',target);
+    setDashMoney('dashboardCollected',total);
+    setDashMoney('dashboardRemaining',remaining);
+    const bar=document.getElementById('dashboardProgressBar'); if(bar)bar.style.width=progress+'%';
+    setDashText('dashboardTrendPercent',Math.round(progress)+'%');
+    const trend=document.getElementById('dashboardTrendText');
+    if(trend) trend.textContent=target<=0
+        ? 'Administrator hajaweka lengo la mchango bado.'
+        : total>=target
+          ? 'Lengo limefikiwa! Jumla iliyokusanywa ni TZS '+money(total)+'.'
+          : 'Zimekusanywa TZS '+money(total)+' kati ya TZS '+money(target)+'. Bado TZS '+money(remaining)+' kufikia lengo.';
+
+    setDashMoney('dashboardExpenses',totalExpenses);
+    setDashMoney('dashboardDisasterPaid',totalDisasterPaid);
+    setDashMoney('dashboardDeductions',totalDeductions);
+    // Mfumo wa salio hutumia mapato yote ukitoa matumizi na misaada iliyolipwa.
+    setDashMoney('dashboardNet',total-totalExpenses-totalDisasterPaid);
+    const balanceResult=await supabaseClient.rpc('get_fund_balance');
     if(balanceResult.error){
-        console.error("Fund balance:",balanceResult.error);
+        console.error('Fund balance:',balanceResult.error);
     }else{
         const balanceRow=Array.isArray(balanceResult.data)?balanceResult.data[0]:balanceResult.data;
         const balance=Number(balanceRow?.fund_balance||0);
-        const balanceEl=document.getElementById("dashboardFundBalance");
-        if(balanceEl) balanceEl.textContent="TZS "+money(balance);
+        setDashMoney('dashboardFundBalance',balance);
+        if(Math.abs(balance-(total-totalExpenses-totalDisasterPaid))>0.01){
+            console.warn('Dashboard net and Supabase fund balance differ:',{dashboardNet:total-totalExpenses-totalDisasterPaid,rpcBalance:balance});
+        }
     }
 
-    document.getElementById("dashboardContributions").textContent=rows.length;
-    document.getElementById("dashboardAmount").textContent="TZS "+money(total);
-    document.getElementById("dashboardFamilyAmount").textContent="TZS "+money(familyAmount);
-    document.getElementById("dashboardStakeholders").textContent=stakeholderCount;
-    document.getElementById("dashboardStakeholderAmount").textContent="TZS "+money(stakeholderAmount);
-
-    const targetEl=document.getElementById("dashboardTarget");
-    const collectedEl=document.getElementById("dashboardCollected");
-    const remainingEl=document.getElementById("dashboardRemaining");
-    const bar=document.getElementById("dashboardProgressBar");
-    const percent=document.getElementById("dashboardTrendPercent");
-    const trend=document.getElementById("dashboardTrendText");
-    if(targetEl) targetEl.textContent="TZS "+money(target);
-    if(collectedEl) collectedEl.textContent="TZS "+money(total);
-    if(remainingEl) remainingEl.textContent="TZS "+money(remaining);
-    if(bar) bar.style.width=progress+"%";
-    if(percent) percent.textContent=Math.round(progress)+"%";
-    if(trend){
-        trend.textContent=target<=0
-          ? "Administrator hajaweka lengo la mchango bado."
-          : total>=target
-          ? "Lengo limefikiwa! Jumla iliyokusanywa ni TZS "+money(total)+"."
-          : "Zimekusanywa TZS "+money(total)+" kati ya TZS "+money(target)+". Bado TZS "+money(remaining)+" kufikia lengo.";
-    }
-
-    const setDash=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent="TZS "+money(value);};
-    setDash("dashboardExpenses",totalExpenses);
-    setDash("dashboardDisasterPaid",totalDisasterPaid);
-    setDash("dashboardDeductions",totalDeductions);
-    setDash("dashboardNet",total-totalExpenses-totalDisasterPaid);
-
-    // Muhtasari wa wajibu wa michango wa kila mwanafamilia hadi mwezi wa sasa.
-    const paidByMember=new Map();
-    rows.filter(r=>r.contributor_type==="Mwanafamilia").forEach(r=>{
-        const id=String(r.family_member_id||"");
-        if(!id)return;
-        const month=String(r.contribution_date||"").slice(0,7);
-        if(!paidByMember.has(id)) paidByMember.set(id,new Map());
-        const map=paidByMember.get(id);
-        map.set(month,(map.get(month)||0)+Math.max(0,Number(r.amount||0)));
-    });
-    let dashboardComplete=0, dashboardDebtors=0, dashboardDebtAmount=0, dashboardExcessMembers=0, dashboardExcessAmount=0;
+    // Ramani ya majina huruhusu malipo yasiyo na family_member_id kuhusishwa
+    // tu ikiwa jina linaendana na mwanafamilia mmoja pekee, kuepuka kuhesabu vibaya majina yanayofanana.
+    const membersByName=new Map();
     memberList.forEach(member=>{
+        const key=normalizeDashboardMemberName(member);
+        if(!key)return;
+        if(!membersByName.has(key))membersByName.set(key,[]);
+        membersByName.get(key).push(member);
+    });
+    const contributionMemberId=new Map();
+    familyRows.forEach(row=>{
+        let id=String(row.family_member_id||'');
+        if(!id){
+            const matches=membersByName.get(normalizeDashboardMemberName(row))||[];
+            if(matches.length===1)id=String(matches[0].id);
+        }
+        if(id) contributionMemberId.set(String(row.id),id);
+    });
+    const paidByMember=new Map();
+    familyRows.forEach(row=>{
+        const id=contributionMemberId.get(String(row.id));
+        const month=String(row.contribution_date||'').slice(0,7);
+        if(!id||!/^\d{4}-\d{2}$/.test(month))return;
+        if(!paidByMember.has(id))paidByMember.set(id,new Map());
+        const monthly=paidByMember.get(id);
+        monthly.set(month,(monthly.get(month)||0)+Math.max(0,Number(row.amount||0)));
+    });
+
+    let dashboardComplete=0,dashboardDebtors=0,dashboardDebtAmount=0,dashboardExcessMembers=0,dashboardExcessAmount=0;
+    memberList.filter(member=>isContributionEligible(member)).forEach(member=>{
         const months=getContributionMonths(member);
         const monthly=paidByMember.get(String(member.id))||new Map();
-        let carry=0,totalPaid=0;
-        months.forEach(m=>{
-            const paid=Math.max(0,Number(monthly.get(m.key)||0));
-            totalPaid+=paid;
-            carry+=paid;
-            carry-=Math.min(carry,m.due);
-        });
+        const totalPaid=months.reduce((sum,m)=>sum+Math.max(0,Number(monthly.get(m.key)||0)),0);
         const due=months.reduce((sum,m)=>sum+m.due,0);
         const debt=Math.max(due-totalPaid,0);
         const excess=Math.max(totalPaid-due,0);
         if(debt>0){dashboardDebtors++;dashboardDebtAmount+=debt;}else{dashboardComplete++;}
         if(excess>0){dashboardExcessMembers++;dashboardExcessAmount+=excess;}
     });
-    const setDashText=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=String(value);};
-    setDashText("dashboardContribComplete",dashboardComplete);
-    setDashText("dashboardContribDebtors",dashboardDebtors);
-    setDashText("dashboardContribDebtAmount","TZS "+money(dashboardDebtAmount));
-    setDashText("dashboardContribExcess",dashboardExcessMembers);
-    setDashText("dashboardContribExcessAmount","TZS "+money(dashboardExcessAmount));
+    setDashText('dashboardContribComplete',dashboardComplete);
+    setDashText('dashboardContribDebtors',dashboardDebtors);
+    setDashMoney('dashboardContribDebtAmount',dashboardDebtAmount);
+    setDashText('dashboardContribExcess',dashboardExcessMembers);
+    setDashMoney('dashboardContribExcessAmount',dashboardExcessAmount);
 
-    // Hali ya mwezi huu: hupima wajibu na malipo ya mwezi wa sasa pekee.
+    // Mwezi wa sasa: fedha zilizopokelewa mwezi huu ni tofauti na wajibu wa mwezi
+    // uliolipiwa baada ya kutenga deni la miezi iliyotangulia kwanza.
     const currentMonthKey=getCurrentContributionMonthKey();
-    const currentMonthLabel=new Intl.DateTimeFormat('sw-TZ',{month:'long',year:'numeric'})
-        .format(new Date(Number(currentMonthKey.slice(0,4)),Number(currentMonthKey.slice(5,7))-1,1));
-    const currentMonthMembers=memberList.filter(member=>getContributionMonths(member).some(m=>m.key===currentMonthKey));
-    const currentMonthPaidByMember=new Map();
-    rows.filter(r=>r.contributor_type==="Mwanafamilia" && String(r.contribution_date||"").slice(0,7)===currentMonthKey)
-        .forEach(r=>{
-            const id=String(r.family_member_id||"");
-            if(!id)return;
-            currentMonthPaidByMember.set(id,(currentMonthPaidByMember.get(id)||0)+Math.max(0,Number(r.amount||0)));
+    const [currentYear,currentMonth]=currentMonthKey.split('-').map(Number);
+    const currentMonthLabel=new Intl.DateTimeFormat('sw-TZ',{month:'long',year:'numeric'}).format(new Date(currentYear,currentMonth-1,1));
+    const currentMonthMembers=memberList.filter(member=>isContributionEligible(member)&&getContributionMonths(member).some(m=>m.key===currentMonthKey));
+    let currentMonthDue=0,currentMonthAllocated=0,currentMonthPaidMembers=0,currentMonthCash=0;
+    currentMonthMembers.forEach(member=>{
+        const months=getContributionMonths(member);
+        const monthly=paidByMember.get(String(member.id))||new Map();
+        const totalPaid=months.reduce((sum,m)=>sum+Math.max(0,Number(monthly.get(m.key)||0)),0);
+        let obligationBefore=0;
+        let allocatedCurrent=0;
+        months.forEach(m=>{
+            const allocated=Math.min(m.due,Math.max(0,totalPaid-obligationBefore));
+            obligationBefore+=m.due;
+            if(m.key===currentMonthKey)allocatedCurrent=allocated;
         });
-    const currentMonthDue=currentMonthMembers.length*FAMILY_MONTHLY_CONTRIBUTION;
-    // Onyesha kiasi halisi kilicholipwa mwezi huu; malipo yanayozidi wajibu
-    // hayapotei kwenye dashboard, bali yanaendelea kuonekana kama ziada kwenye ufuatiliaji wa michango.
-    const currentMonthPaid=currentMonthMembers.reduce((sum,m)=>sum+Math.max(0,Number(currentMonthPaidByMember.get(String(m.id))||0)),0);
-    const currentMonthPaidMembers=currentMonthMembers.filter(m=>Number(currentMonthPaidByMember.get(String(m.id))||0)>=FAMILY_MONTHLY_CONTRIBUTION).length;
-    const currentMonthRemaining=Math.max(currentMonthDue-currentMonthPaid,0);
-    const currentMonthRate=currentMonthDue>0?Math.min(100,(currentMonthPaid/currentMonthDue)*100):0;
-    const setDashMoney=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent="TZS "+money(value);};
-    setDashMoney("dashboardCurrentMonthDue",currentMonthDue);
-    setDashMoney("dashboardCurrentMonthPaid",currentMonthPaid);
-    setDashText("dashboardCurrentMonthPaidMembers",currentMonthPaidMembers);
-    setDashText("dashboardCurrentMonthMembersSummary",currentMonthPaidMembers+" kati ya "+currentMonthMembers.length+" wenye wajibu");
-    setDashMoney("dashboardCurrentMonthRemaining",currentMonthRemaining);
-    const currentMonthLabelEl=document.getElementById("dashboardCurrentMonthLabel");
-    if(currentMonthLabelEl) currentMonthLabelEl.textContent=currentMonthLabel+" • Wajibu wa TZS "+money(FAMILY_MONTHLY_CONTRIBUTION)+" kwa kila mwanafamilia mwenye wajibu.";
-    const currentMonthRateEl=document.getElementById("dashboardCurrentMonthRate");
-    if(currentMonthRateEl) currentMonthRateEl.textContent=Math.round(currentMonthRate)+"%";
-    const currentMonthBar=document.getElementById("dashboardCurrentMonthBar");
-    if(currentMonthBar) currentMonthBar.style.width=currentMonthRate+"%";
+        currentMonthDue+=FAMILY_MONTHLY_CONTRIBUTION;
+        currentMonthAllocated+=allocatedCurrent;
+        if(allocatedCurrent>=FAMILY_MONTHLY_CONTRIBUTION)currentMonthPaidMembers++;
+        const cash=familyRows.filter(row=>contributionMemberId.get(String(row.id))===String(member.id)&&String(row.contribution_date||'').slice(0,7)===currentMonthKey)
+            .reduce((sum,row)=>sum+Math.max(0,Number(row.amount||0)),0);
+        currentMonthCash+=cash;
+    });
+    const currentMonthRemaining=Math.max(currentMonthDue-currentMonthAllocated,0);
+    const currentMonthRate=currentMonthDue>0?Math.min(100,(currentMonthAllocated/currentMonthDue)*100):0;
+    setDashMoney('dashboardCurrentMonthDue',currentMonthDue);
+    setDashMoney('dashboardCurrentMonthPaid',currentMonthCash);
+    setDashText('dashboardCurrentMonthPaidMembers',currentMonthPaidMembers);
+    setDashText('dashboardCurrentMonthMembersSummary',currentMonthPaidMembers+' kati ya '+currentMonthMembers.length+' wenye wajibu');
+    setDashMoney('dashboardCurrentMonthRemaining',currentMonthRemaining);
+    const currentMonthLabelEl=document.getElementById('dashboardCurrentMonthLabel');
+    if(currentMonthLabelEl)currentMonthLabelEl.textContent=currentMonthLabel+' • Wajibu wa TZS '+money(FAMILY_MONTHLY_CONTRIBUTION)+' kwa kila mwenye wajibu. Kiwango cha kukamilika kinatenga madeni ya zamani kwanza.';
+    setDashText('dashboardCurrentMonthRate',Math.round(currentMonthRate)+'%');
+    const currentMonthBar=document.getElementById('dashboardCurrentMonthBar');if(currentMonthBar)currentMonthBar.style.width=currentMonthRate+'%';
 
     const recent=[
-      ...rows.map(r=>({date:r.contribution_date,type:"Mchango",desc:([r.first_name,r.middle_name,r.last_name].filter(Boolean).join(" ")||"Mchango")+((r.receipt_number?" • Risiti "+r.receipt_number:"")),amount:Number(r.amount||0),kind:"in"})),
-      ...expenses.map(r=>({date:r.expense_date,type:"Matumizi",desc:r.category||r.description||"Matumizi",amount:Number(r.amount||0),kind:"out"})),
-      ...disasterRows.filter(r=>r.payment_status==='Imelipwa').map(r=>({date:r.assistance_date,type:"Msaada wa Maafa",desc:r.disaster_type||"Msaada",amount:Number(r.amount||0),kind:"out"}))
-    ].sort((a,b)=>String(b.date||"").localeCompare(String(a.date||""))).slice(0,10);
-    const recentBody=document.getElementById("dashboardRecentActivity");
-    const formatDashboardActivityDate=(value)=>{
-      if(!value)return "-";
-      const parts=String(value).slice(0,10).split("-");
-      if(parts.length===3 && parts.every(Boolean)) return parts[2]+"/"+parts[1]+"/"+parts[0];
-      return String(value);
+        ...rows.map(r=>({date:r.contribution_date,type:'Mchango',desc:([r.first_name,r.middle_name,r.last_name].filter(Boolean).join(' ')||'Mchango')+(r.receipt_number?' • Risiti '+r.receipt_number:''),amount:Number(r.amount||0),kind:'in'})),
+        ...expenses.map(r=>({date:r.expense_date,type:'Matumizi',desc:r.category||r.description||'Matumizi',amount:Number(r.amount||0),kind:'out'})),
+        ...disasterRows.filter(r=>r.payment_status==='Imelipwa').map(r=>({date:r.assistance_date,type:'Msaada wa Maafa',desc:r.disaster_type||'Msaada',amount:Number(r.amount||0),kind:'out'}))
+    ].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,10);
+    const recentBody=document.getElementById('dashboardRecentActivity');
+    const formatDashboardActivityDate=value=>{
+        if(!value)return '-';
+        const parts=String(value).slice(0,10).split('-');
+        if(parts.length===3&&parts.every(Boolean))return parts[2]+'/'+parts[1]+'/'+parts[0];
+        return String(value);
     };
-    if(recentBody) recentBody.innerHTML=recent.length?recent.map(r=>`<tr class="border-t"><td class="p-3 whitespace-nowrap">${escapeHtml(formatDashboardActivityDate(r.date))}</td><td class="p-3 font-semibold">${escapeHtml(r.type)}</td><td class="p-3">${escapeHtml(r.desc)}</td><td class="p-3 text-right font-bold whitespace-nowrap ${r.kind==='out'?'text-red-600':'text-green-700'}">${r.kind==='out'?'-':'+'}TZS ${money(r.amount)}</td></tr>`).join(""):'<tr><td colspan="4" class="p-6 text-center text-slate-500">Hakuna shughuli zilizorekodiwa.</td></tr>';
-    const updated=document.getElementById('dashboardLastUpdated');
-    if(updated) updated.textContent='Imesasishwa: '+new Date().toLocaleString('sw-TZ',{dateStyle:'medium',timeStyle:'short'});
+    if(recentBody)recentBody.innerHTML=recent.length?recent.map(r=>`<tr class="border-t"><td class="p-3 whitespace-nowrap">${escapeHtml(formatDashboardActivityDate(r.date))}</td><td class="p-3 font-semibold">${escapeHtml(r.type)}</td><td class="p-3">${escapeHtml(r.desc)}</td><td class="p-3 text-right font-bold whitespace-nowrap ${r.kind==='out'?'text-red-600':'text-green-700'}">${r.kind==='out'?'-':'+'}TZS ${money(r.amount)}</td></tr>`).join(''):'<tr><td colspan="4" class="p-6 text-center text-slate-500">Hakuna shughuli zilizorekodiwa.</td></tr>';
+    if(updated)updated.textContent='Imesasishwa: '+new Date().toLocaleString('sw-TZ',{dateStyle:'medium',timeStyle:'short'})+' • Rekodi zote zimezingatiwa.';
 }
-
 /* =========================================================
    CONTRIBUTION TARGET
 ========================================================= */
@@ -2069,7 +2121,7 @@ async function loadFamilyMembers(attempt=1){
 
         const {data,error}=await supabaseClient
             .from("family_members")
-            .select("id,first_name,middle_name,last_name,phone,email,gender,date_of_birth,marital_status,life_status,address,relationship,is_active,created_at,updated_at")
+            .select("id,first_name,middle_name,last_name,phone,email,gender,date_of_birth,marital_status,life_status,address,relationship,is_active,created_at,updated_at,contribution_eligibility,contribution_start_month")
             .eq("is_active",true)
             .order("id",{ascending:true});
 
@@ -2107,16 +2159,24 @@ async function loadFamilyMembers(attempt=1){
     }
 }
 
+function isContributionEligible(member){
+    return ['married','voluntary','legacy_eligible'].includes(String(member?.contribution_eligibility||''));
+}
+
 function getContributionMonths(member){
-    const created=member?.created_at ? new Date(member.created_at) : null;
+    if(!isContributionEligible(member)) return [];
     const currentMonthKey=getCurrentContributionMonthKey();
     const [currentYear,currentMonth]=currentMonthKey.split('-').map(Number);
     const end=new Date(currentYear,currentMonth-1,1);
     const systemStart=String(FAMILY_CONTRIBUTION_START_MONTH||'2026-09');
+    const savedStart=String(member?.contribution_start_month||'').slice(0,7);
+    const created=member?.created_at ? new Date(member.created_at) : null;
     const createdKey=created && !Number.isNaN(created.getTime())
         ? `${created.getFullYear()}-${String(created.getMonth()+1).padStart(2,'0')}`
         : systemStart;
-    const startKey=createdKey>systemStart ? createdKey : systemStart;
+    // Kwa taarifa zilizopo kabla ya kipengele hiki, hifadhi kanuni ya awali.
+    // Kwa rekodi mpya, mwezi wa kuanza lazima uamuliwe na kujazwa kwenye fomu.
+    const startKey=savedStart || (member?.id ? (createdKey>systemStart?createdKey:systemStart) : '');
     const [startYear,startMonth]=startKey.split('-').map(Number);
     if(!startYear || !startMonth || Number.isNaN(startYear) || Number.isNaN(startMonth)) return [];
     const start=new Date(startYear,startMonth-1,1);
@@ -2150,8 +2210,8 @@ async function loadFamilyContributionStatus(){
     if(!familyMembers.length){table.innerHTML='<tr><td colspan="8" class="p-6 text-center text-slate-500">Hakuna wanafamilia.</td></tr>';return;}
     table.innerHTML='<tr><td colspan="8" class="p-6 text-center text-slate-500">Inapakia hali ya michango...</td></tr>';
     const [contributionResult,deductionResult]=await Promise.all([
-        supabaseClient.from('contributions').select('id,family_member_id,first_name,middle_name,last_name,amount,contribution_date,is_deleted,contributor_type').eq('is_deleted',false).eq('contributor_type','Mwanafamilia'),
-        supabaseClient.from('disaster_contribution_deductions').select('id,family_member_id,amount,deduction_date,is_deleted').eq('is_deleted',false)
+        fetchAllDashboardRows('contributions','id,family_member_id,first_name,middle_name,last_name,amount,contribution_date,is_deleted,contributor_type',q=>q.eq('is_deleted',false).eq('contributor_type','Mwanafamilia').order('id',{ascending:true})),
+        fetchAllDashboardRows('disaster_contribution_deductions','id,family_member_id,amount,deduction_date,is_deleted',q=>q.eq('is_deleted',false).order('id',{ascending:true}))
     ]);
     const {data,error}=contributionResult;
     const {data:deductionData,error:deductionError}=deductionResult;
@@ -2170,48 +2230,49 @@ async function loadFamilyContributionStatus(){
         deductedByMember.set(id,(deductedByMember.get(id)||0)+amount);
     });
 
-    const byId=new Map(), byName=new Map();
+    const byId=new Map(), byUnlinkedName=new Map();
     (data||[]).forEach(row=>{
         const amount=Math.max(0,Number(row.amount||0));
         const key=String(row.contribution_date||'').slice(0,7);
         const id=row.family_member_id?String(row.family_member_id):'';
         const name=[row.first_name,row.middle_name,row.last_name].filter(Boolean).join(' ').trim().toLowerCase().replace(/\s+/g,' ');
-        if(id){
-            if(!byId.has(id))byId.set(id,new Map());
-            const m=byId.get(id);m.set(key,(m.get(key)||0)+amount);
-        }
-        if(name){
-            if(!byName.has(name))byName.set(name,new Map());
-            const m=byName.get(name);m.set(key,(m.get(key)||0)+amount);
-        }
+        const target=id?byId:byUnlinkedName;
+        const targetKey=id||name;
+        if(!targetKey||!key)return;
+        if(!target.has(targetKey))target.set(targetKey,new Map());
+        const m=target.get(targetKey);m.set(key,(m.get(key)||0)+amount);
     });
 
+    const statusMembersByName=new Map();
+    familyMembers.forEach(member=>{
+        const nameKey=normalizeMemberNameForStatus(member);
+        if(!nameKey)return;
+        if(!statusMembersByName.has(nameKey))statusMembersByName.set(nameKey,[]);
+        statusMembersByName.get(nameKey).push(member);
+    });
     familyContributionStatusRows=familyMembers.map(member=>{
         const months=getContributionMonths(member);
-        const monthlyMap=byId.get(String(member.id)) ?? byName.get(normalizeMemberNameForStatus(member)) ?? new Map();
-        let remainingPayment=0;
-        let totalPaid=0;
+        const monthlyMap=new Map(byId.get(String(member.id))||[]);
+        // Rekodi zisizo na ID huunganishwa kwa jina tu kama jina hilo ni la mwanafamilia mmoja.
+        const nameKey=normalizeMemberNameForStatus(member);
+        const nameMatches=statusMembersByName.get(nameKey)||[];
+        const unlinked=nameMatches.length===1?(byUnlinkedName.get(nameKey)||new Map()):new Map();
+        unlinked.forEach((amount,key)=>monthlyMap.set(key,(monthlyMap.get(key)||0)+amount));
+        const due=months.reduce((sum,m)=>sum+m.due,0);
+        const totalPaid=months.reduce((sum,m)=>sum+Math.max(0,Number(monthlyMap.get(m.key)||0)),0);
+        let obligationBefore=0;
         const monthRows=months.map(m=>{
             const paid=Math.max(0,Number(monthlyMap.get(m.key)||0));
-            totalPaid+=paid;
-            remainingPayment+=paid;
-            const allocated=Math.min(remainingPayment,m.due);
-            remainingPayment-=allocated;
-            return {
-                ...m,
-                paid,
-                allocated,
-                debt:Math.max(m.due-allocated,0),
-                excess:0
-            };
+            const allocated=Math.min(m.due,Math.max(0,totalPaid-obligationBefore));
+            obligationBefore+=m.due;
+            return {...m,paid,allocated,debt:Math.max(m.due-allocated,0),excess:0};
         });
-        const due=months.reduce((sum,m)=>sum+m.due,0);
         const debt=monthRows.reduce((sum,m)=>sum+m.debt,0);
         const excess=Math.max(totalPaid-due,0);
         if(monthRows.length && excess>0) monthRows[monthRows.length-1].excess=excess;
         const deducted=Math.min(totalPaid,Math.max(0,Number(deductedByMember.get(String(member.id))||0)));
         const availableBalance=Math.max(totalPaid-deducted,0);
-        return {member,months:months.length,due,total:totalPaid,deducted,availableBalance,debt,excess,monthRows};
+        return {member,eligible:isContributionEligible(member),months:months.length,due,total:totalPaid,deducted,availableBalance,debt,excess,monthRows};
     });
     renderFamilyContributionStatus();
 }
@@ -2254,12 +2315,12 @@ function renderFamilyContributionStatus(selectedMemberId=null){
         const deduction=Math.min(proposal,available);
         const unavailable=Math.max(proposal-deduction,0);
         const remaining=Math.max(available-deduction,0);
-        const status=x.debt>0?`<span class="text-red-600 font-semibold">Deni: TZS ${money(x.debt)}</span>`:(x.excess>0?`<span class="text-green-700 font-semibold">Ziada: TZS ${money(x.excess)}</span>`:'<span class="text-slate-500">Hakuna deni/ziada</span>');
+        const status=!x.eligible?`<span class="text-slate-500 font-semibold">${x.member?.contribution_eligibility==='exempt'?'Amesamehewa':'Bado hastahili kuchangia'}</span>`:(x.debt>0?`<span class="text-red-600 font-semibold">Deni: TZS ${money(x.debt)}</span>`:(x.excess>0?`<span class="text-green-700 font-semibold">Ziada: TZS ${money(x.excess)}</span>`:'<span class="text-slate-500">Hakuna deni/ziada</span>'));
         const monthly=x.monthRows.map(m=>`<div class="grid grid-cols-4 gap-2 py-2 border-b last:border-b-0 text-xs sm:text-sm">
           <div class="font-semibold">${escapeHtml(m.label)}</div>
           <div class="text-center">TZS ${money(m.due)}</div>
-          <div class="text-center">TZS ${money(m.paid)}</div>
-          <div class="text-center font-semibold ${m.debt>0?'text-red-600':m.excess>0?'text-green-700':'text-slate-500'}">${m.debt>0?'Deni: TZS '+money(m.debt):m.excess>0?'Ziada: TZS '+money(m.excess):'Imekamilika'}</div>
+          <div class="text-center">TZS ${money(m.paid)}${m.paid>0&&m.allocated<m.paid?'<div class="text-[10px] text-slate-500">Sehemu ya ziada/ya miezi mingine</div>':''}</div>
+          <div class="text-center font-semibold ${m.debt>0?'text-red-600':m.excess>0?'text-green-700':'text-slate-500'}">${m.debt>0?'Deni: TZS '+money(m.debt):m.excess>0?'Ziada: TZS '+money(m.excess):'Imekamilika'}${m.allocated>0?'<div class="text-[10px] font-normal text-slate-500">Imetengwa: TZS '+money(m.allocated)+'</div>':''}</div>
         </div>`).join('');
         return `<tr class="border-t hover:bg-slate-50 align-top">
           <td class="p-3"><div class="font-semibold">${escapeHtml(fullName(x.member))}</div><div class="text-xs text-slate-500 mt-1">${status}</div>${selectedMemberId?`<div class="mt-3 rounded-lg border bg-slate-50 p-3"><div class="grid grid-cols-4 gap-2 text-[11px] font-bold text-slate-500 border-b pb-2 text-center"><div>Mwezi</div><div>Anatakiwa</div><div>Kiasi alichochanga</div><div>Hali</div></div>${monthly}</div>`:''}</td>
@@ -2437,8 +2498,20 @@ function openFamilyModal(member=null){
     document.getElementById("familyPhone").value=member?.phone||"";
     document.getElementById("familyDateOfBirth").value=member?.date_of_birth||"";
     document.getElementById("familyMaritalStatus").value=member?.marital_status||"";
+    document.getElementById("familyContributionEligibility").value=member?.contribution_eligibility||(member?'legacy_eligible':'');
+    document.getElementById("familyContributionStartMonth").value=String(member?.contribution_start_month||'').slice(0,7);
+    updateContributionEligibilityFields();
     document.getElementById("familyLifeStatus").value=member?.life_status||"Haijulikani";
     document.getElementById("familyModalTitle").textContent=member?"Hariri Mwanachama":"Ongeza Mwanachama";
+}
+
+function updateContributionEligibilityFields(){
+    const eligibility=document.getElementById('familyContributionEligibility')?.value||'';
+    const wrap=document.getElementById('familyContributionStartWrap');
+    const month=document.getElementById('familyContributionStartMonth');
+    const required=['married','voluntary','legacy_eligible'].includes(eligibility);
+    if(wrap) wrap.classList.toggle('hidden',!required);
+    if(month) month.required=required;
 }
 
 function closeFamilyModal(){
@@ -2452,8 +2525,14 @@ async function saveFamilyMember(){
     if(!lockActionButton(button,"Inahifadhi...")) return;
     try{
         const id=document.getElementById("familyId").value;
-        const payload={first_name:document.getElementById("familyFirstName").value.trim(),middle_name:document.getElementById("familyMiddleName").value.trim(),last_name:document.getElementById("familyLastName").value.trim(),gender:document.getElementById("familyGender").value||null,phone:document.getElementById("familyPhone").value.trim(),date_of_birth:document.getElementById("familyDateOfBirth").value||null,marital_status:document.getElementById("familyMaritalStatus").value||null,life_status:document.getElementById("familyLifeStatus").value||"Haijulikani"};
+        const eligibility=document.getElementById("familyContributionEligibility").value||"";
+        const startMonth=document.getElementById("familyContributionStartMonth").value||"";
+        const contributionEligible=['married','voluntary','legacy_eligible'].includes(eligibility);
+        const payload={first_name:document.getElementById("familyFirstName").value.trim(),middle_name:document.getElementById("familyMiddleName").value.trim(),last_name:document.getElementById("familyLastName").value.trim(),gender:document.getElementById("familyGender").value||null,phone:document.getElementById("familyPhone").value.trim(),date_of_birth:document.getElementById("familyDateOfBirth").value||null,marital_status:document.getElementById("familyMaritalStatus").value||null,life_status:document.getElementById("familyLifeStatus").value||"Haijulikani",contribution_eligibility:eligibility,contribution_start_month:contributionEligible&&startMonth?`${startMonth}-01`:null};
         if(!payload.first_name||!payload.last_name){alert("Jina la kwanza na jina la mwisho vinahitajika.");return;}
+        if(!eligibility){alert("Chagua hali ya wajibu wa mchango.");return;}
+        if(contributionEligible&&!startMonth){alert("Chagua mwezi ambao mwanafamilia huyu anaanza kuchangia.");return;}
+        if(startMonth&&startMonth<'2026-09'){alert("Mwezi wa kuanza kuchangia hauwezi kuwa kabla ya Septemba 2026.");return;}
         if(payload.date_of_birth && isFutureDate(payload.date_of_birth)){alert("Tarehe ya kuzaliwa haiwezi kuwa ya baadaye.");return;}
         const result=id?await supabaseClient.from("family_members").update(payload).eq("id",id):await supabaseClient.from("family_members").insert(payload);
         if(result.error){alert("Imeshindikana kuhifadhi: "+result.error.message);return;}
@@ -2958,24 +3037,21 @@ async function loadReports(){
         const to=document.getElementById('reportTo')?.value||'';
         if(from && to && from>to) throw new Error('Tarehe ya "Kuanzia" haiwezi kuwa baada ya tarehe ya "Hadi".');
 
-        let cq=supabaseClient.from('contributions')
-            .select('id,receipt_number,contribution_date,family_member_id,first_name,middle_name,last_name,phone,contributor_type,amount,payment_method,transaction_reference,is_deleted,created_at')
-            .eq('is_deleted',false)
-            .order('contribution_date',{ascending:false})
-            .order('id',{ascending:false});
-        if(from) cq=cq.gte('contribution_date',from);
-        if(to) cq=cq.lte('contribution_date',to);
-
         const [cr,fr]=await Promise.all([
-            cq,
-            supabaseClient.from('family_members').select('id,first_name,middle_name,last_name,gender,is_active,life_status,relationship,created_at').order('id',{ascending:true})
+            fetchAllDashboardRows('contributions','id,receipt_number,contribution_date,family_member_id,first_name,middle_name,last_name,phone,contributor_type,amount,payment_method,transaction_reference,is_deleted,created_at',q=>{
+                q=q.eq('is_deleted',false).order('contribution_date',{ascending:false}).order('id',{ascending:false});
+                if(from)q=q.gte('contribution_date',from);
+                if(to)q=q.lte('contribution_date',to);
+                return q;
+            }),
+            fetchAllDashboardRows('family_members','id,first_name,middle_name,last_name,gender,is_active,life_status,relationship,created_at,contribution_eligibility,contribution_start_month',q=>q.order('id',{ascending:true}))
         ]);
         if(cr.error) throw cr.error;
         if(fr.error) throw fr.error;
 
         const [allCr,dd] = await Promise.all([
-            supabaseClient.from('contributions').select('id,family_member_id,first_name,middle_name,last_name,amount,contribution_date,is_deleted,contributor_type').eq('is_deleted',false).eq('contributor_type','Mwanafamilia'),
-            supabaseClient.from('disaster_contribution_deductions').select('id,family_member_id,amount,deduction_date,is_deleted').eq('is_deleted',false)
+            fetchAllDashboardRows('contributions','id,family_member_id,first_name,middle_name,last_name,amount,contribution_date,is_deleted,contributor_type',q=>q.eq('is_deleted',false).eq('contributor_type','Mwanafamilia').order('id',{ascending:true})),
+            fetchAllDashboardRows('disaster_contribution_deductions','id,family_member_id,amount,deduction_date,is_deleted',q=>q.eq('is_deleted',false).order('id',{ascending:true}))
         ]);
         if(allCr.error) throw allCr.error;
         if(dd.error) throw dd.error;
@@ -2986,7 +3062,14 @@ async function loadReports(){
         const deductionRows=Array.isArray(dd.data)?dd.data:[];
         const activeMembers=members.filter(m=>m.is_active!==false);
         const total=rows.reduce((a,r)=>a+Number(r.amount||0),0);
-        const uniqueContributors=new Set(rows.map(r=>[r.first_name,r.middle_name,r.last_name,r.phone].filter(Boolean).join(' ').trim().toLowerCase()).filter(Boolean)).size;
+        // Hesabu wachangiaji wa kipekee kwa ID ya mwanafamilia pale inapopatikana;
+        // kwa wadau wa nje tumia simu au jina badala ya kutegemea jina pekee.
+        const uniqueContributors=new Set(rows.map(r=>{
+            if(r.contributor_type==='Mwanafamilia' && r.family_member_id!=null) return 'member:'+String(r.family_member_id);
+            const phone=String(r.phone||'').trim().replace(/\s+/g,'');
+            const name=[r.first_name,r.middle_name,r.last_name].filter(Boolean).join(' ').trim().toLowerCase().replace(/\s+/g,' ');
+            return phone?'phone:'+phone:(name?'name:'+name:null);
+        }).filter(Boolean)).size;
 
         // Muhtasari wa utendaji wa kipindi: wajibu huhesabiwa kwa kila mwanafamilia
         // kulingana na miezi yake halisi ya wajibu, si idadi ya sasa ya wanafamilia
@@ -3001,9 +3084,11 @@ async function loadReports(){
         let periodDue=0;
         if(selectedStartKey && selectedEndKey){
             const periodMonths=new Set(monthKeysBetween(selectedStartKey,selectedEndKey));
-            periodDue=members.reduce((sum,member)=>{
+            // Wajibu wa kipindi huhesabiwa kwa wanafamilia walio hai kwenye mfumo.
+            // Hii inaepusha akaunti zilizozimwa kuongezwa kwenye wajibu wa sasa.
+            periodDue=activeMembers.reduce((sum,member)=>{
                 const memberMonths=getContributionMonths(member);
-                const eligibleMonths=memberMonths.filter(m=>periodMonths.has(m.key)).length;
+                const eligibleMonths=isContributionEligible(member)?memberMonths.filter(m=>periodMonths.has(m.key)).length:0;
                 return sum+(eligibleMonths*FAMILY_MONTHLY_CONTRIBUTION);
             },0);
         }
@@ -3036,24 +3121,45 @@ async function loadReports(){
             if(!id)return;
             deductionByMember.set(id,(deductionByMember.get(id)||0)+Math.max(0,Number(r.amount||0)));
         });
-        const reportLedgerRows=members.map(member=>{
+        const ledgerActiveMembers=members.filter(member=>member.is_active!==false);
+        const ledgerMembersByName=new Map();
+        ledgerActiveMembers.forEach(member=>{
+            const key=normalizeDashboardMemberName(member);
+            if(!key)return;
+            if(!ledgerMembersByName.has(key))ledgerMembersByName.set(key,[]);
+            ledgerMembersByName.get(key).push(member);
+        });
+        const ledgerContributionMemberId=new Map();
+        allFamilyContributions.forEach(r=>{
+            let memberId=String(r.family_member_id||'');
+            if(!memberId){
+                const matches=ledgerMembersByName.get(normalizeDashboardMemberName(r))||[];
+                if(matches.length===1)memberId=String(matches[0].id);
+            }
+            if(memberId)ledgerContributionMemberId.set(String(r.id),memberId);
+        });
+        const reportLedgerRows=ledgerActiveMembers.filter(member=>isContributionEligible(member)).map(member=>{
             const months=getContributionMonths(member);
             const memberId=String(member.id);
-            const memberRows=allFamilyContributions.filter(r=>String(r.family_member_id||'')===memberId);
+            const memberRows=allFamilyContributions.filter(r=>ledgerContributionMemberId.get(String(r.id))===memberId);
             const monthlyMap=new Map();
             memberRows.forEach(r=>{
                 const key=String(r.contribution_date||'').slice(0,7);
-                if(!key)return;
+                // Malipo yanahesabiwa tu kwa miezi ambayo mwanafamilia ana wajibu.
+                // Miamala ya kabla ya kuanza wajibu haiwezi kuonekana kama ziada.
+                if(!key || !months.some(m=>m.key===key))return;
                 monthlyMap.set(key,(monthlyMap.get(key)||0)+Math.max(0,Number(r.amount||0)));
             });
-            let remainingPayment=0;
-            let totalPaid=0;
+            // Jumla ya malipo ya miezi yenye wajibu, bila kujali kama deni la
+            // mwezi uliopita lililipwa mwezi uliofuata. Malipo yote hutenga
+            // wajibu wa zamani kwanza (oldest-due-first), hivyo malipo ya Oktoba
+            // yanaweza kufunga deni la Septemba kabla ya kufunika Oktoba.
+            const totalPaid=months.reduce((sum,m)=>sum+Math.max(0,Number(monthlyMap.get(m.key)||0)),0);
+            let obligationBefore=0;
             const monthRows=months.map(m=>{
                 const paid=Math.max(0,Number(monthlyMap.get(m.key)||0));
-                totalPaid+=paid;
-                remainingPayment+=paid;
-                const allocated=Math.min(remainingPayment,m.due);
-                remainingPayment-=allocated;
+                const allocated=Math.min(m.due,Math.max(0,totalPaid-obligationBefore));
+                obligationBefore+=m.due;
                 return {...m,paid,allocated,debt:Math.max(m.due-allocated,0),excess:0};
             });
             const due=months.reduce((sum,m)=>sum+m.due,0);
@@ -3064,6 +3170,29 @@ async function loadReports(){
             const availableBalance=Math.max(totalPaid-deducted,0);
             return {member,months:months.length,due,total:totalPaid,debt,excess,deducted,availableBalance,memberName:fullName(member),monthRows};
         });
+        // Rekebisha kiwango cha utendaji kwa kutumia kiasi kilichotengwa hasa
+        // kwa miezi iliyochaguliwa, badala ya fedha zote zilizopokelewa kipindi hicho.
+        // Hii huzuia malipo ya deni la zamani au ya mwanachama asiye na wajibu
+        // kuongeza kimakosa kiwango cha kukamilika kwa kipindi hiki.
+        if(selectedStartKey && selectedEndKey){
+            const selectedPeriodKeys=new Set(monthKeysBetween(selectedStartKey,selectedEndKey));
+            const periodAllocated=reportLedgerRows.reduce((sum,row)=>sum+row.monthRows
+                .filter(month=>selectedPeriodKeys.has(month.key))
+                .reduce((monthSum,month)=>monthSum+Math.max(0,Number(month.allocated||0)),0),0);
+            const correctedRate=periodDue>0?Math.min(100,Math.round((periodAllocated/periodDue)*100)):0;
+            const correctedGap=Math.max(periodDue-periodAllocated,0);
+            const rateEl=document.getElementById('reportCollectionRate');
+            const insightBox=document.getElementById('reportPeriodInsights');
+            if(rateEl) rateEl.textContent=correctedRate+'%';
+            if(insightBox) insightBox.innerHTML=[
+                ['Wajibu wa kipindi',reportMoney(periodDue)],
+                ['Kiasi kilichotengwa kwa wajibu',reportMoney(periodAllocated)],
+                ['Wajibu ambao bado haujatimizwa',reportMoney(correctedGap)],
+                ['Wastani kwa muamala',reportMoney(averageContribution)],
+                ['Wachangiaji tofauti',uniqueContributors]
+            ].map(([label,value])=>`<div class="rounded-xl bg-slate-50 p-4"><div class="text-xs text-slate-500">${label}</div><div class="font-bold text-lg mt-1">${value}</div></div>`).join('');
+        }
+
         const ledgerSummary={
             due:reportLedgerRows.reduce((a,r)=>a+r.due,0),
             total:reportLedgerRows.reduce((a,r)=>a+r.total,0),
@@ -3080,21 +3209,36 @@ async function loadReports(){
         const now=new Date();
         const currentKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
         const currentLabel=now.toLocaleDateString('sw-TZ',{month:'long',year:'numeric'});
-        const activeMembers=Array.isArray(familyMembers)?familyMembers.filter(m=>String(m.status||'').toLowerCase()!=='inactive'):[];
-        const eligible=activeMembers.filter(m=>{
-            const joined=String(m.join_date||m.created_at||'').slice(0,7);
-            return !joined || joined<=currentKey;
-        });
+        const eligible=ledgerActiveMembers.filter(m=>isContributionEligible(m) && getContributionMonths(m).some(month=>month.key===currentKey));
         const due=eligible.length*Number(FAMILY_MONTHLY_CONTRIBUTION||10000);
-        const currentRows=Array.isArray(contributions)?contributions.filter(r=>String(r.contribution_date||'').slice(0,7)===currentKey && !r.is_deleted):[];
-        const paid=currentRows.reduce((sum,r)=>sum+Number(r.amount||0),0);
-        const payers=new Set(currentRows.map(r=>r.family_member_id||r.member_id||r.contributor_id).filter(Boolean));
-        const outstanding=Math.max(0,due-paid);
+        // Kiasi kilichopokelewa mwezi huu ni tofauti na wajibu uliokamilishwa;
+        // malipo ya miezi yote hutenga deni la zamani kwanza.
+        const eligibleIds=new Set(eligible.map(m=>String(m.id)));
+        const currentRows=allFamilyContributions.filter(r=>String(r.contribution_date||'').slice(0,7)===currentKey && eligibleIds.has(ledgerContributionMemberId.get(String(r.id))));
+        const paid=currentRows.reduce((sum,r)=>sum+Math.max(0,Number(r.amount||0)),0);
+        let allocatedCurrent=0,completedCurrent=0;
+        eligible.forEach(member=>{
+            const months=getContributionMonths(member);
+            const totalPaid=allFamilyContributions.filter(r=>ledgerContributionMemberId.get(String(r.id))===String(member.id)).reduce((sum,r)=>{
+                const key=String(r.contribution_date||'').slice(0,7);
+                return months.some(m=>m.key===key)?sum+Math.max(0,Number(r.amount||0)):sum;
+            },0);
+            let obligationBefore=0;
+            months.forEach(m=>{
+                const allocated=Math.min(m.due,Math.max(0,totalPaid-obligationBefore));
+                obligationBefore+=m.due;
+                if(m.key===currentKey){
+                    allocatedCurrent+=allocated;
+                    if(allocated>=m.due)completedCurrent++;
+                }
+            });
+        });
+        const outstanding=Math.max(0,due-allocatedCurrent);
         const setText=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
         setText('currentMonthContributionLabel',currentLabel);
         setText('currentMonthDue',reportMoney(due));
         setText('currentMonthPaid',reportMoney(paid));
-        setText('currentMonthPayers',String(payers.size));
+        setText('currentMonthPayers',String(completedCurrent));
         setText('currentMonthOutstanding',reportMoney(outstanding));
     }catch(summaryError){ console.warn('Current month summary error:',summaryError); }
         const responsibilityComplete=reportLedgerRows.filter(r=>r.debt<=0).length;
@@ -3752,9 +3896,54 @@ async function createUser(){
 /* =========================================================
    USER MANAGEMENT + PASSWORDS
 ========================================================= */
+function normalizeUserMatchText(value){
+    return String(value||"")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g,"")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g,"");
+}
+
+function normalizeUserPhone(value){
+    const digits=String(value||"").replace(/\D/g,"");
+    if(digits.length>=9) return digits.slice(-9);
+    return digits;
+}
+
+function findFamilyMemberMatch(user){
+    const userName=normalizeUserMatchText(fullName(user));
+    const userPhone=normalizeUserPhone(user?.phone);
+    const matches=[];
+    for(const member of (familyMembers||[])){
+        const memberName=normalizeUserMatchText(fullName(member));
+        const memberPhone=normalizeUserPhone(member?.phone);
+        const nameMatch=!!userName && !!memberName && userName===memberName;
+        const phoneMatch=!!userPhone && userPhone.length>=9 && !!memberPhone && memberPhone===userPhone;
+        if(nameMatch||phoneMatch){
+            matches.push({member,nameMatch,phoneMatch});
+        }
+    }
+    if(!matches.length) return {status:"none",matches:[]};
+    const exactBoth=matches.filter(x=>x.nameMatch&&x.phoneMatch);
+    if(exactBoth.length===1) return {status:"strong",matches:exactBoth};
+    if(matches.length===1) return {status:"possible",matches};
+    return {status:"multiple",matches};
+}
+
+function renderUserFamilyMatch(user){
+    const result=findFamilyMemberMatch(user);
+    if(result.status==="strong") return `<div class="text-xs"><span class="inline-flex items-center rounded-full bg-green-100 text-green-800 px-2 py-1 font-bold">✓ Imelingana</span><div class="mt-1 text-slate-600">${escapeHtml(fullName(result.matches[0].member))} · #${escapeHtml(String(result.matches[0].member.id))}</div></div>`;
+    if(result.status==="possible") return `<div class="text-xs"><span class="inline-flex items-center rounded-full bg-amber-100 text-amber-800 px-2 py-1 font-bold">⚠ Inaweza kuendana</span><div class="mt-1 text-slate-600">${escapeHtml(fullName(result.matches[0].member))} · #${escapeHtml(String(result.matches[0].member.id))}</div></div>`;
+    if(result.status==="multiple") return `<div class="text-xs"><span class="inline-flex items-center rounded-full bg-orange-100 text-orange-800 px-2 py-1 font-bold">⚠ Zimepatikana ${result.matches.length}</span><div class="mt-1 text-slate-600">Kagua majina/simu kabla ya idhini.</div></div>`;
+    return `<span class="inline-flex items-center rounded-full bg-slate-100 text-slate-600 px-2 py-1 text-xs font-semibold">— Hakuna ulinganifu</span>`;
+}
+
 async function loadUsers(){
     if(currentProfile?.role !== "Administrator") return;
     ensureClient();
+    if(!Array.isArray(familyMembers) || familyMembers.length===0){
+        try{ await loadFamilyMembers(); }catch(error){ console.warn("Family members matching data unavailable:",error); }
+    }
 
     const {data,error}=await supabaseClient
         .from("profiles")
@@ -3764,7 +3953,7 @@ async function loadUsers(){
     if(error){
         console.error("Users:",error);
         document.getElementById("usersTable").innerHTML=`
-        <tr><td colspan="5" class="p-6 text-center text-red-600">
+        <tr><td colspan="6" class="p-6 text-center text-red-600">
         Imeshindikana kupakia watumiaji: ${escapeHtml(error.message)}
         </td></tr>`;
         return;
@@ -3802,7 +3991,7 @@ function renderUsers(){
     const summary=document.getElementById("usersResultSummary");
     if(summary) summary.textContent=`Inaonyesha ${filtered.length} kati ya ${total} watumiaji.`;
     if(!filtered.length){
-        table.innerHTML=`<tr><td colspan="5" class="p-6 text-center text-slate-500">Hakuna watumiaji.</td></tr>`;
+        table.innerHTML=`<tr><td colspan="6" class="p-6 text-center text-slate-500">Hakuna watumiaji.</td></tr>`;
         return;
     }
 
@@ -3831,6 +4020,7 @@ function renderUsers(){
               ${pending?"Inasubiri idhini":rejected?"Imekataliwa":active?"Hai":"Imezimwa"}
             </span>
           </td>
+          <td class="p-3">${renderUserFamilyMatch(user)}</td>
           <td class="p-3 text-right">
             ${self?"<span class=\"text-xs text-slate-400\">Akaunti yako</span>":
               `<div class="flex flex-col items-center justify-center gap-2 py-1">
@@ -3900,7 +4090,15 @@ async function setUserApproval(id,status){
     if(!["approved","rejected"].includes(status)){return;}
     if(String(id)===String(currentUser?.id)){alert("Huwezi kubadilisha hali ya akaunti yako mwenyewe.");return;}
     const label=status==="approved"?"kuidhinisha":"kukataa";
-    if(!confirm(`Unataka ${label} usajili wa mwanafamilia huyu?`)) return;
+    const target=users.find(x=>String(x.id)===String(id));
+    const match=target?findFamilyMemberMatch(target):{status:"none",matches:[]};
+    if(status==="approved" && match.status==="none"){
+        const proceed=confirm("Hakuna mwanafamilia aliyepatikana anayelingana kwa jina au simu. Una uhakika unataka kuidhinisha akaunti hii?\n\nKumbuka: hii ni tahadhari ya ukaguzi tu; Administrator bado anaweza kuidhinisha.");
+        if(!proceed) return;
+    }else if(status==="approved" && match.status==="multiple"){
+        const proceed=confirm(`Wanafamilia ${match.matches.length} wameonekana kuwa na ulinganifu unaowezekana. Kagua kwanza taarifa kabla ya kuidhinisha.\n\nUnaendelea kuidhinisha?`);
+        if(!proceed) return;
+    }else if(!confirm(`Unataka ${label} usajili wa mwanafamilia huyu?`)) return;
     try{
         const {error}=await supabaseClient.from("profiles").update({
             approval_status:status,
