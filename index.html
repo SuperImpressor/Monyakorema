@@ -777,6 +777,15 @@ Jisajili kama Mwanafamilia
 <p class="text-sm text-slate-500 mb-4">Pakua nakala ya taarifa muhimu za mfumo kwa faili moja la JSON. Pia unaweza kupakua CSV za maeneo husika kwenye menyu zake.</p>
 <button id="backupButton" type="button" onclick="downloadSystemBackup()" class="w-full bg-slate-800 hover:bg-slate-900 text-white py-3 rounded-lg font-bold">Pakua Backup ya Mfumo</button>
 <p id="backupStatus" class="text-xs text-slate-500 mt-2"></p>
+<hr class="my-5">
+<h4 class="font-bold mb-2">♻️ Rejesha Backup</h4>
+<p class="text-sm text-slate-600 mb-3">Chagua faili la JSON lililopakuliwa awali. Mfumo utaonyesha idadi ya rekodi kwanza. Urejeshaji huu unaongeza rekodi ambazo hazipo tu; hautafuta wala kubadilisha rekodi zilizopo.</p>
+<label for="restoreBackupFile" class="block text-sm font-semibold mb-1">Faili la Backup (.json)</label>
+<input id="restoreBackupFile" type="file" accept=".json,application/json" onchange="previewSystemBackup(this)" class="w-full border rounded-lg p-2 text-sm">
+<div id="restoreBackupPreview" class="hidden mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm"></div>
+<label class="flex gap-2 items-start mt-3 text-sm text-amber-800"><input id="restoreBackupConfirm" type="checkbox" class="mt-1"><span>Nimeelewa: rekodi zinazofanana zitarukwa, na akaunti za kuingia/password hazirejeshwi na faili hili.</span></label>
+<button id="restoreBackupButton" type="button" onclick="restoreSystemBackup()" disabled class="w-full mt-3 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white py-3 rounded-lg font-bold">Rejesha Rekodi Zilizokosekana</button>
+<p id="restoreBackupStatus" aria-live="polite" class="text-xs text-slate-600 mt-2"></p>
 </div>
 </div>
 </section>
@@ -1744,15 +1753,17 @@ async function downloadSystemBackup(){
   if(currentProfile?.role!=='Administrator'){alert('Administrator pekee ndiye anayeruhusiwa kupakua backup.');return;}
   const button=document.getElementById('backupButton'); if(!lockActionButton(button,'Inaandaa backup...'))return;
   try{
+    // Tumia pagination na mpangilio thabiti wa ID ili backup isikose rekodi
+    // pale jedwali linapozidi kikomo cha kawaida cha API cha rekodi 1,000.
     const [fr,cr,er,dr,dd,pr,sr,sn]=await Promise.all([
-      supabaseClient.from('family_members').select('*'),
-      supabaseClient.from('contributions').select('*'),
-      supabaseClient.from('fund_expenses').select('*'),
-      supabaseClient.from('disaster_assistance').select('*'),
-      supabaseClient.from('disaster_contribution_deductions').select('*'),
-      supabaseClient.from('profiles').select('id,first_name,middle_name,last_name,phone,role,is_active,created_at,updated_at'),
-      supabaseClient.from('system_settings').select('*'),
-      supabaseClient.from('system_notifications').select('*')
+      fetchAllDashboardRows('family_members','*',q=>q.order('id',{ascending:true})),
+      fetchAllDashboardRows('contributions','*',q=>q.order('id',{ascending:true})),
+      fetchAllDashboardRows('fund_expenses','*',q=>q.order('id',{ascending:true})),
+      fetchAllDashboardRows('disaster_assistance','*',q=>q.order('id',{ascending:true})),
+      fetchAllDashboardRows('disaster_contribution_deductions','*',q=>q.order('id',{ascending:true})),
+      fetchAllDashboardRows('profiles','id,first_name,middle_name,last_name,phone,role,is_active,created_at,updated_at',q=>q.order('id',{ascending:true})),
+      fetchAllDashboardRows('system_settings','*',q=>q.order('id',{ascending:true})),
+      fetchAllDashboardRows('system_notifications','*',q=>q.order('id',{ascending:true}))
     ]);
     const bad=[fr,cr,er,dr,dd,pr,sr,sn].find(x=>x.error); if(bad)throw bad.error;
     const backup={schema_version:'MoNyakorema-backup-v3',included_tables:['family_members','contributions','fund_expenses','disaster_assistance','disaster_contribution_deductions','profiles','system_settings','system_notifications'],exported_at:new Date().toISOString(),exported_by:currentUser?.id||null,data:{family_members:fr.data||[],contributions:cr.data||[],fund_expenses:er.data||[],disaster_assistance:dr.data||[],disaster_contribution_deductions:dd.data||[],profiles:pr.data||[],system_settings:sr.data||[],system_notifications:sn.data||[]}};
@@ -1760,6 +1771,70 @@ async function downloadSystemBackup(){
     downloadTextFile(json,'monyakorema-backup-'+localDateISO()+'.json','application/json;charset=utf-8');
     document.getElementById('backupStatus').textContent='Backup kamili imeandaliwa kwa kupakuliwa: '+new Date().toLocaleString('sw-TZ');
   }catch(e){console.error(e);alert('Imeshindikana kutengeneza backup: '+(e?.message||e));}finally{unlockActionButton(button,'Pakua Backup ya Mfumo');}
+}
+
+/* =========================================================
+   BACKUP RESTORE — insert-only, no destructive overwrite
+========================================================= */
+let selectedRestoreBackup = null;
+const RESTORE_TABLE_ORDER = [
+  'family_members','contributions','fund_expenses','disaster_assistance',
+  'disaster_contribution_deductions','system_settings','system_notifications'
+];
+function previewSystemBackup(input){
+  const preview=document.getElementById('restoreBackupPreview');
+  const button=document.getElementById('restoreBackupButton');
+  const status=document.getElementById('restoreBackupStatus');
+  selectedRestoreBackup=null; button.disabled=true;
+  document.getElementById('restoreBackupConfirm').checked=false;
+  preview.classList.remove('hidden'); preview.textContent=''; status.textContent='';
+  const file=input?.files?.[0];
+  if(!file){preview.textContent='Hakuna faili lililochaguliwa.';return;}
+  if(file.size>25*1024*1024){preview.textContent='Faili ni kubwa kuliko 25 MB. Gawa backup au tumia njia ya usimamizi wa database.';return;}
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const b=JSON.parse(String(reader.result||''));
+      if(!b || b.schema_version!=='MoNyakorema-backup-v3' || !b.data || typeof b.data!=='object') throw new Error('Faili hili si backup inayotambulika ya Mo’Nyakorema (v3).');
+      const bad=RESTORE_TABLE_ORDER.find(t=>!Array.isArray(b.data[t]));
+      if(bad) throw new Error('Backup haijakamilika: sehemu ya '+bad+' haipo au si orodha.');
+      for(const t of RESTORE_TABLE_ORDER){
+        if(b.data[t].some(row=>!row||typeof row!=='object'||Array.isArray(row))) throw new Error('Kuna rekodi isiyo sahihi kwenye '+t+'.');
+      }
+      selectedRestoreBackup=b;
+      const names={family_members:'Wanafamilia',contributions:'Michango',fund_expenses:'Matumizi ya mfuko',disaster_assistance:'Msaada wa maafa',disaster_contribution_deductions:'Makato ya michango',system_settings:'Mipangilio',system_notifications:'Taarifa'};
+      preview.innerHTML='<p class="font-bold mb-2">Backup imesomwa — '+escapeHtml(b.exported_at||'Tarehe haijatajwa')+'</p><ul class="space-y-1">'+RESTORE_TABLE_ORDER.map(t=>'<li class="flex justify-between gap-3"><span>'+names[t]+'</span><strong>'+b.data[t].length.toLocaleString('sw-TZ')+'</strong></li>').join('')+'</ul><p class="mt-3 text-amber-800">Huu ni urejeshaji wa kuongeza tu. Rekodi zilizopo hazitafutwa wala kuandikwa upya. Profaili/akaunti za Auth hazitarejeshwa. Rekodi zinazotegemea akaunti za Auth zisizopo zinaweza kusababisha urejeshaji wote kurudishwa nyuma. Hifadhi backup nyingine kabla ya kujaribu. Ili kutumia urejeshaji salama wa transaction moja, sakinisha kwanza faili la V135-MoNyakorema-Restore.sql kwenye Supabase SQL Editor.</p>';
+      button.disabled=false;
+    }catch(e){selectedRestoreBackup=null;preview.textContent='Imeshindikana kusoma backup: '+(e.message||e);}
+  };
+  reader.onerror=()=>{preview.textContent='Imeshindikana kusoma faili.';};
+  reader.readAsText(file);
+}
+async function restoreSystemBackup(){
+  if(currentProfile?.role!=='Administrator'){alert('Administrator pekee ndiye anayeruhusiwa kurejesha backup.');return;}
+  if(!selectedRestoreBackup){alert('Chagua na hakiki faili la backup kwanza.');return;}
+  if(!document.getElementById('restoreBackupConfirm').checked){alert('Weka tiki kuthibitisha kuwa umeelewa tahadhari.');return;}
+  const ok=confirm('Urejeshaji utafanyika ndani ya transaction moja ya database: ama rekodi zote zinazokubalika zitaongezwa pamoja, au mabadiliko yote ya jaribio hili yatarejeshwa ikiwa kuna hitilafu. Rekodi zilizopo hazitaandikwa upya. Endelea?');
+  if(!ok)return;
+  const button=document.getElementById('restoreBackupButton'); if(!lockActionButton(button,'Inarejesha...'))return;
+  const status=document.getElementById('restoreBackupStatus');
+  try{
+    status.textContent='Inakagua ruhusa na kurejesha backup kwa usalama...';
+    // Server-side RPC must be installed using V135-MoNyakorema-Restore.sql first.
+    const {data,error}=await supabaseClient.rpc('restore_monyakorema_backup',{p_backup:selectedRestoreBackup});
+    if(error) throw new Error(error.message||'Supabase imerudisha hitilafu.');
+    const results=(data&&data.tables&&typeof data.tables==='object')?data.tables:{};
+    const labels={family_members:'Wanafamilia',contributions:'Michango',fund_expenses:'Matumizi',disaster_assistance:'Msaada wa maafa',disaster_contribution_deductions:'Makato',system_settings:'Mipangilio',system_notifications:'Taarifa'};
+    const lines=RESTORE_TABLE_ORDER.map(t=>`${labels[t]}: zimeongezwa ${Number(results[t]?.inserted||0)}, zimerukwa ${Number(results[t]?.skipped||0)}`);
+    status.textContent='Urejeshaji wa transaction umekamilika. '+lines.join(' | ')+(data?.profiles_skipped?' | Profaili zimeachwa: '+data.profiles_skipped:'');
+    alert(status.textContent+' Rekodi zilizokuwepo hazikuandikwa upya.');
+    selectedRestoreBackup=null;document.getElementById('restoreBackupFile').value='';document.getElementById('restoreBackupPreview').classList.add('hidden');document.getElementById('restoreBackupConfirm').checked=false;
+  }catch(e){
+    console.error(e);
+    const msg=e?.message||String(e);
+    status.textContent='Urejeshaji haujakamilika: '+msg+(msg.includes('restore_monyakorema_backup')?' Hakikisha faili la SQL la V135 limetekelezwa kwenye Supabase.':'');
+    alert(status.textContent+' Ikiwa RPC imerudisha hitilafu, transaction yake haipaswi kuacha mabadiliko ya sehemu tu.');
+  }finally{unlockActionButton(button,'Rejesha Rekodi Zilizokosekana');button.disabled=!selectedRestoreBackup;}
 }
 
 /* =========================================================
