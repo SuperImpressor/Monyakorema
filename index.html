@@ -1808,7 +1808,7 @@ async function downloadSystemBackup(){
     const [fr,cr,er,dr,dd,dp,pr,sr,sn,al]=await Promise.all([
       fetchAllDashboardRows('family_members','*',q=>q.order('id',{ascending:true})),
       fetchAllDashboardRows('contributions','*',q=>q.order('id',{ascending:true})),
-      fetchAllDashboardRows('fund_expenses_accessible','*',q=>q.order('id',{ascending:true})),
+      fetchAllRpcRows('get_fund_expenses_accessible'),
       fetchAllDashboardRows('disaster_assistance','*',q=>q.order('id',{ascending:true})),
       fetchAllDashboardRows('disaster_contribution_deductions','*',q=>q.order('id',{ascending:true})),
       fetchAllDashboardRows('disaster_contribution_deduction_payments','*',q=>q.order('id',{ascending:true})),
@@ -2004,6 +2004,19 @@ async function fetchAllDashboardRows(tableName, columns, configureQuery=null){
     return {data:all,error:null};
 }
 
+async function fetchAllRpcRows(functionName){
+    const all=[];
+    const pageSize=1000;
+    for(let offset=0;;offset+=pageSize){
+        const {data,error}=await supabaseClient.rpc(functionName).range(offset,offset+pageSize-1);
+        if(error) return {data:null,error};
+        const batch=Array.isArray(data)?data:[data].filter(Boolean);
+        all.push(...batch);
+        if(batch.length<pageSize) break;
+    }
+    return {data:all,error:null};
+}
+
 function normalizeDashboardMemberName(person){
     return [person?.first_name,person?.middle_name,person?.last_name]
         .filter(Boolean).join(' ').trim().toLowerCase().replace(/\s+/g,' ');
@@ -2019,7 +2032,7 @@ async function loadDashboard(){
     const [membersResult,contributionResult,expenseResult,disasterResult,deductionResult]=await Promise.all([
         fetchAllDashboardRows('family_members','id,first_name,middle_name,last_name,phone,is_active,created_at,contribution_eligibility,contribution_start_month',q=>q.eq('is_active',true).order('id',{ascending:true})),
         fetchAllDashboardRows('contributions','id,family_member_id,amount,contributor_type,contribution_date,receipt_number,first_name,middle_name,last_name,phone,payment_method,is_deleted',q=>q.eq('is_deleted',false).order('contribution_date',{ascending:false})),
-        fetchAllDashboardRows('fund_expenses_accessible','id,amount,expense_date,category,description,is_deleted',q=>q.eq('is_deleted',false).order('expense_date',{ascending:false})),
+        fetchAllRpcRows('get_fund_expenses_accessible').then(r=>({...r,data:(r.data||[]).filter(x=>!x.is_deleted).sort((a,b)=>String(b.expense_date).localeCompare(String(a.expense_date)))})),
         fetchAllDashboardRows('disaster_assistance','id,amount,assistance_date,disaster_type,payment_status,status,is_deleted',q=>q.eq('is_deleted',false).order('assistance_date',{ascending:false})),
         fetchAllDashboardRows('disaster_contribution_deductions','id,amount,deducted_amount,outstanding_amount,deduction_date,is_deleted',q=>q.eq('is_deleted',false).order('deduction_date',{ascending:false}))
     ]);
@@ -2926,13 +2939,14 @@ async function loadFinanceDashboard(){
 
   const balancePromise=supabaseClient.rpc('get_fund_balance');
   let cq=supabaseClient.from('contributions').select('amount,contribution_date,contributor_type').eq('is_deleted',false);
-  let eq=supabaseClient.from('fund_expenses_accessible').select('id,expense_date,category,description,amount,payment_method').order('expense_date',{ascending:false});
+  let eqPromise=fetchAllRpcRows('get_fund_expenses_accessible');
   let dq=supabaseClient.from('disaster_assistance').select('id,assistance_date,amount,status,family_member_id,disaster_type,payment_status').eq('is_deleted',false).eq('payment_status','Imelipwa').order('assistance_date',{ascending:false});
   let ddq=supabaseClient.from('disaster_contribution_deductions').select('id,family_member_id,amount,deducted_amount,outstanding_amount,deduction_date,is_deleted').eq('is_deleted',false);
   let rpq=supabaseClient.from('disaster_contribution_deduction_payments').select('id,payment_date,amount,payment_method,payment_reference').order('payment_date',{ascending:false});
-  if(from){cq=cq.gte('contribution_date',from);eq=eq.gte('expense_date',from);dq=dq.gte('assistance_date',from);ddq=ddq.gte('deduction_date',from);rpq=rpq.gte('payment_date',from);}
-  if(to){cq=cq.lte('contribution_date',to);eq=eq.lte('expense_date',to);dq=dq.lte('assistance_date',to);ddq=ddq.lte('deduction_date',to);rpq=rpq.lte('payment_date',to);}
-  const [br,cr,er,dr,dd,rp]=await Promise.all([balancePromise,cq,eq,dq,ddq,rpq]);
+  if(from){cq=cq.gte('contribution_date',from);dq=dq.gte('assistance_date',from);ddq=ddq.gte('deduction_date',from);rpq=rpq.gte('payment_date',from);}
+  if(to){cq=cq.lte('contribution_date',to);dq=dq.lte('assistance_date',to);ddq=ddq.lte('deduction_date',to);rpq=rpq.lte('payment_date',to);}
+  const [br,cr,er,dr,dd,rp]=await Promise.all([balancePromise,cq,eqPromise,dq,ddq,rpq]);
+  if(!er.error) er.data=(er.data||[]).filter(x=>!x.is_deleted&&(!from||x.expense_date>=from)&&(!to||x.expense_date<=to)).sort((a,b)=>String(b.expense_date).localeCompare(String(a.expense_date)));
   if(br.error||cr.error||er.error||dr.error||dd.error||rp.error){
     console.error('Finance:',br.error||cr.error||er.error||dr.error||dd.error||rp.error);
     if(summary) summary.innerHTML='<div class="bg-red-50 text-red-700 rounded-xl p-5 sm:col-span-2 lg:col-span-5">Imeshindikana kupakia taarifa za fedha. Jaribu tena.</div>';
