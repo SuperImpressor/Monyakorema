@@ -115,6 +115,129 @@ body{font-family:Arial,sans-serif}
   #page-finance table th:last-child,#page-finance table td:last-child,#page-disaster table th:last-child,#page-disaster table td:last-child{white-space:nowrap;}
 }
 </style>
+
+<style id="v174-header-mobile-layout">
+/* Header sasa ina makundi mawili huru: jina la mfumo na taarifa za akaunti. */
+@media (max-width: 640px) {
+  #app header > div > .flex.items-center.justify-between {
+    height: auto !important;
+    min-height: 64px !important;
+    gap: 8px !important;
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+    align-items: center !important;
+  }
+  #app header .header-brand {
+    flex: 0 1 42% !important;
+    width: 42% !important;
+    min-width: 0 !important;
+    gap: 7px !important;
+  }
+  #app header .header-brand > button {
+    flex: 0 0 34px !important;
+    width: 34px !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    padding: 0 !important;
+    font-size: 19px !important;
+  }
+  #app header .header-brand-text {
+    min-width: 0 !important;
+  }
+  #app header .header-brand-text h1 {
+    font-size: 15px !important;
+    line-height: 1.15 !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+  }
+  #app header .header-brand-text p {
+    display: none !important;
+  }
+  #app header .header-user-controls {
+    flex: 1 1 58% !important;
+    min-width: 0 !important;
+    gap: 6px !important;
+    justify-content: flex-end !important;
+  }
+  #app header #headerNotificationsButton {
+    flex: 0 0 30px !important;
+    width: 30px !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    padding: 0 !important;
+    font-size: 19px !important;
+  }
+  #app header .header-user-controls > .text-right {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+  #app header #currentUserName {
+    font-size: 12px !important;
+    line-height: 1.15 !important;
+  }
+  #app header #currentUserRole {
+    display: block !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    font-size: 9px !important;
+    line-height: 1.2 !important;
+    padding: 3px 5px !important;
+    white-space: nowrap !important;
+  }
+  #app header #headerLogoutButton {
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    flex: 0 0 40px !important;
+    width: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    max-height: 28px !important;
+    margin: -10px 0 0 !important;
+    padding: 0 2px !important;
+    transform: none !important;
+    align-self: flex-start !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 10px !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+  }
+}
+</style>
+
+
+<style id="v175-header-role-no-cut">
+/* Wadhifa ionekane yote kwenye simu; kibonge kiruhusu maandishi kushuka mstari. */
+@media (max-width: 640px) {
+  #app header .header-user-controls > .text-right {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    text-align: center !important;
+  }
+  #app header #currentUserRole {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
+    text-align: center !important;
+    font-size: 9px !important;
+    line-height: 1.25 !important;
+    padding: 3px 5px !important;
+    height: auto !important;
+  }
+}
+</style>
 </head>
 
 <body class="min-h-screen bg-slate-100 text-slate-800">
@@ -211,13 +334,14 @@ Jisajili kama Mwanafamilia
 <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-40">
 <div class="max-w-none mx-auto px-3 sm:px-4">
 <div class="flex items-center justify-between h-16">
-<div class="flex items-center gap-3 min-w-0">
+<div class="flex items-center gap-3 min-w-0 header-brand">
 <button type="button" onclick="toggleSidebar()" aria-label="Fungua menyu" class="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-lg bg-white/10 hover:bg-white/20 text-xl">☰</button>
-<div>
+<div class="min-w-0 header-brand-text">
 <h1 class="font-bold">Mo'Nyakorema O'Rila</h1>
 <p class="text-xs text-slate-300">Mfumo wa Wanafamilia</p>
 </div>
-<div class="flex items-center gap-2 sm:gap-3 min-w-0">
+</div>
+<div class="flex items-center gap-2 sm:gap-3 min-w-0 header-user-controls">
 <div class="global-search-wrap hidden sm:block w-[220px] lg:w-[300px]">
 <div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" aria-hidden="true">🔎</span><input id="globalSearchInput" oninput="globalSearch(this.value)" class="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder:text-slate-300 pl-10 pr-3 py-2 text-sm outline-none focus:bg-white/15" placeholder="Tafuta mfumo mzima..." aria-label="Tafuta mfumo mzima"></div>
 <div id="globalSearchResults" class="global-search-results hidden"></div>
@@ -227,8 +351,8 @@ Jisajili kama Mwanafamilia
 <div id="currentUserName" class="font-semibold text-sm truncate">-</div>
 <div id="currentUserRole" class="inline-flex mt-0.5 px-2 py-0.5 rounded-full bg-white/15 text-white text-[11px] font-bold truncate max-w-full">Wadhifa: -</div>
 </div>
-<button type="button" onclick="logout()"
- class="bg-red-600 hover:bg-red-700 px-1 py-0.5 rounded-md text-xs font-bold">Toka</button>
+<button id="headerLogoutButton" type="button" onclick="logout()"
+ class="shrink-0 self-start mt-1 bg-red-600 hover:bg-red-700 rounded-md font-bold">Toka</button>
 </div>
 </div>
 </div>
@@ -305,51 +429,51 @@ Jisajili kama Mwanafamilia
 </div>
 </div>
 
-<div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
-<div class="bg-white rounded-xl shadow p-5">
-<p class="text-slate-500 text-sm">Idadi ya Wanafamilia</p>
-<p id="dashboardMembers" class="text-3xl font-bold mt-2">0</p>
+<div class="grid grid-cols-2 lg:grid-cols-5 gap-3 dashboard-stat-grid">
+<div class="bg-white rounded-xl shadow-sm p-3 sm:p-4 min-w-0 dashboard-stat-card">
+<p class="text-slate-500 text-xs sm:text-sm leading-snug">Idadi ya Wanafamilia</p>
+<p id="dashboardMembers" class="text-2xl sm:text-3xl font-bold mt-1.5">0</p>
 </div>
-<div class="bg-white rounded-xl shadow p-5">
-<p class="text-slate-500 text-sm">Idadi ya Michango</p>
-<p id="dashboardContributions" class="text-3xl font-bold mt-2">0</p>
+<div class="bg-white rounded-xl shadow-sm p-3 sm:p-4 min-w-0 dashboard-stat-card">
+<p class="text-slate-500 text-xs sm:text-sm leading-snug">Idadi ya Michango</p>
+<p id="dashboardContributions" class="text-2xl sm:text-3xl font-bold mt-1.5">0</p>
 </div>
-<div class="bg-white rounded-xl shadow p-5">
-<p class="text-slate-500 text-sm">Jumla ya Fedha Zote</p>
-<p id="dashboardAmount" class="text-2xl font-bold mt-2">TZS 0</p>
+<div class="bg-white rounded-xl shadow-sm p-3 sm:p-4 min-w-0 dashboard-stat-card">
+<p class="text-slate-500 text-xs sm:text-sm leading-snug">Jumla ya Fedha Zote</p>
+<p id="dashboardAmount" class="text-xl sm:text-2xl font-bold mt-1.5 break-words">TZS 0</p>
 </div>
-<div class="bg-white rounded-xl shadow p-5">
-<p class="text-slate-500 text-sm">Kiasi Kilichochangwa na Wanafamilia</p>
-<p id="dashboardFamilyAmount" class="text-2xl font-bold mt-2">TZS 0</p>
+<div class="bg-white rounded-xl shadow-sm p-3 sm:p-4 min-w-0 dashboard-stat-card">
+<p class="text-slate-500 text-xs sm:text-sm leading-snug">Kiasi Kilichochangwa na Wanafamilia</p>
+<p id="dashboardFamilyAmount" class="text-xl sm:text-2xl font-bold mt-1.5 break-words">TZS 0</p>
 </div>
-<div class="bg-white rounded-xl shadow p-5">
-<p class="text-slate-500 text-sm">Salio la Mfuko</p>
-<p id="dashboardFundBalance" class="text-2xl font-bold mt-2">TZS 0</p>
-<p class="text-xs text-slate-500 mt-1">Michango − Matumizi − Misaada iliyolipwa</p>
+<div class="bg-white rounded-xl shadow-sm p-3 sm:p-4 min-w-0 dashboard-stat-card">
+<p class="text-slate-500 text-xs sm:text-sm leading-snug">Salio la Mfuko</p>
+<p id="dashboardFundBalance" class="text-xl sm:text-2xl font-bold mt-1.5 break-words">TZS 0</p>
+<p class="text-[11px] sm:text-xs text-slate-500 mt-1 leading-snug">Michango − Matumizi − Misaada iliyolipwa</p>
 </div>
-<div class="bg-white rounded-xl shadow p-5">
-<p class="text-slate-500 text-sm">Wadau Waliochangia</p>
-<p id="dashboardStakeholders" class="text-3xl font-bold mt-2">0</p>
-<p id="dashboardStakeholderAmount" class="text-xs text-slate-500 mt-1">TZS 0</p>
+<div class="bg-white rounded-xl shadow-sm p-3 sm:p-4 min-w-0 dashboard-stat-card">
+<p class="text-slate-500 text-xs sm:text-sm leading-snug">Wadau Waliochangia</p>
+<p id="dashboardStakeholders" class="text-2xl sm:text-3xl font-bold mt-1.5">0</p>
+<p id="dashboardStakeholderAmount" class="text-[11px] sm:text-xs text-slate-500 mt-1">TZS 0</p>
 </div>
 </div>
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-<div class="bg-white rounded-xl shadow p-5"><p class="text-slate-500 text-sm">Matumizi ya Mfuko</p><p id="dashboardExpenses" class="text-2xl font-bold mt-2">TZS 0</p></div>
-<div class="bg-white rounded-xl shadow p-5"><p class="text-slate-500 text-sm">Misaada Iliyolipwa</p><p id="dashboardDisasterPaid" class="text-2xl font-bold mt-2">TZS 0</p></div>
-<div class="bg-white rounded-xl shadow p-5"><p class="text-slate-500 text-sm">Jumla ya Makato</p><p id="dashboardDeductions" class="text-2xl font-bold mt-2">TZS 0</p></div>
-<div class="bg-white rounded-xl shadow p-5"><p class="text-slate-500 text-sm">Mapato Halisi Baada ya Matumizi</p><p id="dashboardNet" class="text-2xl font-bold mt-2">TZS 0</p></div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4 dashboard-stat-grid">
+<div class="bg-white rounded-xl shadow-sm p-3 sm:p-4 min-w-0 dashboard-stat-card"><p class="text-slate-500 text-xs sm:text-sm leading-snug">Matumizi ya Mfuko</p><p id="dashboardExpenses" class="text-xl sm:text-2xl font-bold mt-1.5 break-words">TZS 0</p></div>
+<div class="bg-white rounded-xl shadow-sm p-3 sm:p-4 min-w-0 dashboard-stat-card"><p class="text-slate-500 text-xs sm:text-sm leading-snug">Misaada Iliyolipwa</p><p id="dashboardDisasterPaid" class="text-xl sm:text-2xl font-bold mt-1.5 break-words">TZS 0</p></div>
+<div class="bg-white rounded-xl shadow-sm p-3 sm:p-4 min-w-0 dashboard-stat-card"><p class="text-slate-500 text-xs sm:text-sm leading-snug">Jumla ya Makato</p><p id="dashboardDeductions" class="text-xl sm:text-2xl font-bold mt-1.5 break-words">TZS 0</p></div>
+<div class="bg-white rounded-xl shadow-sm p-3 sm:p-4 min-w-0 dashboard-stat-card"><p class="text-slate-500 text-xs sm:text-sm leading-snug">Mapato Halisi Baada ya Matumizi</p><p id="dashboardNet" class="text-xl sm:text-2xl font-bold mt-1.5 break-words">TZS 0</p></div>
 </div>
 
 <div class="mt-6">
 <div class="flex items-center justify-between gap-3 mb-3">
-<div><h3 class="font-bold text-lg">Muhtasari wa Hali ya Michango</h3><p class="text-sm text-slate-500">Hali ya jumla ya wajibu wa michango kuanzia September 2026 hadi mwezi wa sasa.</p></div>
+<div><h3 class="font-bold text-base sm:text-lg">Muhtasari wa Hali ya Michango</h3><p class="text-xs sm:text-sm text-slate-500">Hali ya jumla ya wajibu wa michango kuanzia September 2026 hadi mwezi wa sasa.</p></div>
 <button onclick="showPage('contributions')" class="text-blue-600 font-bold text-sm">Angalia Hali ya Michango →</button>
 </div>
-<div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-<div class="bg-white rounded-xl shadow p-5"><p class="text-slate-500 text-sm">Waliokamilisha Wajibu</p><p id="dashboardContribComplete" class="text-3xl font-bold mt-2">0</p><p class="text-xs text-slate-500 mt-1">Hawana deni la mchango</p></div>
-<div class="bg-white rounded-xl shadow p-5"><p class="text-slate-500 text-sm">Wenye Deni</p><p id="dashboardContribDebtors" class="text-3xl font-bold mt-2">0</p><p class="text-xs text-slate-500 mt-1">Wana deni la mchango</p></div>
-<div class="bg-white rounded-xl shadow p-5"><p class="text-slate-500 text-sm">Jumla ya Madeni</p><p id="dashboardContribDebtAmount" class="text-2xl font-bold mt-2">TZS 0</p><p class="text-xs text-slate-500 mt-1">Madeni ya michango yaliyopo</p></div>
-<div class="bg-white rounded-xl shadow p-5"><p class="text-slate-500 text-sm">Wenye Ziada</p><p id="dashboardContribExcess" class="text-3xl font-bold mt-2">0</p><p id="dashboardContribExcessAmount" class="text-xs text-slate-500 mt-1">TZS 0</p></div>
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+<div class="bg-white rounded-xl shadow-sm p-3 sm:p-4 min-w-0 dashboard-stat-card"><p class="text-slate-500 text-xs sm:text-sm leading-snug">Waliokamilisha Wajibu</p><p id="dashboardContribComplete" class="text-2xl sm:text-2xl font-bold mt-1.5">0</p><p class="text-[11px] sm:text-xs text-slate-500 mt-1 leading-snug">Hawana deni la mchango</p></div>
+<div class="bg-white rounded-xl shadow-sm p-3 sm:p-4 min-w-0 dashboard-stat-card"><p class="text-slate-500 text-xs sm:text-sm leading-snug">Wenye Deni</p><p id="dashboardContribDebtors" class="text-2xl sm:text-2xl font-bold mt-1.5">0</p><p class="text-[11px] sm:text-xs text-slate-500 mt-1 leading-snug">Wana deni la mchango</p></div>
+<div class="bg-white rounded-xl shadow-sm p-3 sm:p-4 min-w-0 dashboard-stat-card"><p class="text-slate-500 text-xs sm:text-sm leading-snug">Jumla ya Madeni</p><p id="dashboardContribDebtAmount" class="text-xl sm:text-2xl font-bold mt-1.5 break-words">TZS 0</p><p class="text-[11px] sm:text-xs text-slate-500 mt-1 leading-snug">Madeni ya michango yaliyopo</p></div>
+<div class="bg-white rounded-xl shadow-sm p-3 sm:p-4 min-w-0 dashboard-stat-card"><p class="text-slate-500 text-xs sm:text-sm leading-snug">Wenye Ziada</p><p id="dashboardContribExcess" class="text-2xl sm:text-2xl font-bold mt-1.5">0</p><p id="dashboardContribExcessAmount" class="text-[11px] sm:text-xs text-slate-500 mt-1 leading-snug">TZS 0</p></div>
 </div>
 </div>
 
@@ -449,7 +573,7 @@ Jisajili kama Mwanafamilia
       </div>
     </div>
     <div class="overflow-auto max-h-[60vh]">
-      <table class="w-full text-sm">
+      <table class="w-full min-w-[1100px] text-sm">
         <thead class="bg-slate-100 sticky top-0"><tr>
           <th class="text-left p-3">Mwanafamilia</th>
           <th class="text-center p-3">Miezi ya kuchangia</th>
@@ -458,7 +582,7 @@ Jisajili kama Mwanafamilia
           <th class="text-center p-3">Ziada</th>
           <th class="text-center p-3">Pendekezo la Makato</th>
           <th class="text-center p-3">Kinachoweza Kukatwa</th>
-          <th class="text-center p-3">Salio Baada ya Makato</th>
+          <th class="text-center p-2 w-[100px] min-w-[100px]" style="width:100px;min-width:100px">Salio Baada ya Makato</th>
         </tr></thead>
         <tbody id="familyContributionStatusTable"></tbody>
       </table>
@@ -2479,22 +2603,24 @@ function renderFamilyContributionStatus(selectedMemberId=null){
         const unavailable=Math.max(proposal-deduction,0);
         const remaining=Math.max(available-deduction,0);
         const status=!x.eligible?`<span class="text-slate-500 font-semibold">${x.member?.contribution_eligibility==='exempt'?'Amesamehewa':'Bado hastahili kuchangia'}</span>`:(x.debt>0?`<span class="text-red-600 font-semibold">Deni: TZS ${money(x.debt)}</span>`:(x.excess>0?`<span class="text-green-700 font-semibold">Ziada: TZS ${money(x.excess)}</span>`:'<span class="text-slate-500">Hakuna deni/ziada</span>'));
-        const monthly=x.monthRows.map(m=>`<div class="grid grid-cols-4 gap-2 py-2 border-b last:border-b-0 text-xs sm:text-sm">
-          <div class="font-semibold">${escapeHtml(m.label)}</div>
-          <div class="text-center">TZS ${money(m.due)}</div>
-          <div class="text-center">TZS ${money(m.paid)}${m.paid>0&&m.allocated<m.paid?'<div class="text-[10px] text-slate-500">Sehemu ya ziada/ya miezi mingine</div>':''}</div>
-          <div class="text-center font-semibold ${m.debt>0?'text-red-600':m.excess>0?'text-green-700':'text-slate-500'}">${m.debt>0?'Deni: TZS '+money(m.debt):m.excess>0?'Ziada: TZS '+money(m.excess):'Imekamilika'}${m.allocated>0?'<div class="text-[10px] font-normal text-slate-500">Imetengwa: TZS '+money(m.allocated)+'</div>':''}</div>
+        const monthly=x.monthRows.map(m=>`<div class="rounded-lg border bg-white p-3 min-w-0">
+          <div class="font-semibold text-sm text-slate-800 mb-2">${escapeHtml(m.label)}</div>
+          <div class="grid grid-cols-2 gap-x-3 gap-y-2 text-xs sm:text-sm">
+            <div><div class="text-slate-500">Anatakiwa</div><div class="font-semibold">TZS ${money(m.due)}</div></div>
+            <div><div class="text-slate-500">Alichangia</div><div class="font-semibold">TZS ${money(m.paid)}</div>${m.paid>0&&m.allocated<m.paid?'<div class="text-[10px] text-slate-500">Sehemu ya ziada/ya miezi mingine</div>':''}</div>
+            <div class="col-span-2 border-t pt-2"><div class="text-slate-500">Hali</div><div class="font-semibold ${m.debt>0?'text-red-600':m.excess>0?'text-green-700':'text-slate-600'}">${m.debt>0?'Deni: TZS '+money(m.debt):m.excess>0?'Ziada: TZS '+money(m.excess):'Imekamilika'}</div>${m.allocated>0?'<div class="text-[10px] font-normal text-slate-500">Imetengwa: TZS '+money(m.allocated)+'</div>':''}</div>
+          </div>
         </div>`).join('');
         return `<tr class="border-t hover:bg-slate-50 align-top">
-          <td class="p-3"><div class="font-semibold">${escapeHtml(fullName(x.member))}</div><div class="text-xs text-slate-500 mt-1">${status}</div>${x.deductionDebt>0?`<div class=\"text-xs text-amber-700 mt-1 font-semibold\">Deni la makato ya maafa: TZS ${money(x.deductionDebt)}</div>`:''}${selectedMemberId?`<div class="mt-3 rounded-lg border bg-slate-50 p-3"><div class="grid grid-cols-4 gap-2 text-[11px] font-bold text-slate-500 border-b pb-2 text-center"><div>Mwezi</div><div>Anatakiwa</div><div>Kiasi alichochanga</div><div>Hali</div></div>${monthly}</div>`:''}</td>
+          <td class="p-3"><div class="font-semibold">${escapeHtml(fullName(x.member))}</div><div class="text-xs text-slate-500 mt-1">${status}</div>${x.deductionDebt>0?`<div class="text-xs text-amber-700 mt-1 font-semibold">Deni la makato ya maafa: TZS ${money(x.deductionDebt)}</div>`:''}</td>
           <td class="p-3 text-center">${x.months}</td>
           <td class="p-3 text-center font-semibold ${x.debt>0?'text-red-600':''}">TZS ${money(x.debt)}</td>
           <td class="p-3 text-center font-semibold">TZS ${money(x.total)}</td>
           <td class="p-3 text-center font-semibold ${x.excess>0?'text-green-700':''}">TZS ${money(x.excess)}</td>
           <td class="p-3 text-center">TZS ${money(proposal)}</td>
           <td class="p-3 text-center font-semibold ${deduction>0?'text-emerald-700':'text-slate-500'}">TZS ${money(deduction)}</td>
-          <td class="p-3 text-center font-bold ${remaining>0?'text-blue-700':'text-slate-500'}">TZS ${money(remaining)}${unavailable>0?`<div class="text-xs text-amber-600 mt-1">Haijapatikana: TZS ${money(unavailable)}</div>`:''}</td>
-        </tr>`;
+          <td class="p-3 text-center font-bold ${remaining>0?'text-blue-700':'text-slate-500'}" style="width:100px;min-width:100px">TZS ${money(remaining)}${unavailable>0?`<div class="text-xs text-amber-600 mt-1">Haijapatikana: TZS ${money(unavailable)}</div>`:''}</td>
+        </tr>${selectedMemberId?`<tr class="bg-slate-50"><td colspan="8" class="p-3 sm:p-4"><div class="font-bold text-sm text-slate-700 mb-3">Mgawanyo wa michango kwa miezi</div><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">${monthly}</div></td></tr>`:''}`;
     }).join('');
 }
 
