@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="sw">
 <head>
+<!-- V154: legacy disaster approval RPC retired server-side; app continues using decide_disaster_assistance_v149. -->
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mo'Nyakorema O'Rila — Mfumo wa Wanafamilia</title>
@@ -653,7 +655,7 @@ Jisajili kama Mwanafamilia
     <div class="bg-white rounded-xl shadow p-4 mb-4">
       <div class="v23-filter">
         <div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" aria-hidden="true">🔎</span><input id="v23HistorySearch" oninput="v23RenderHistory()" class="border rounded-lg pl-10 pr-3 py-2" placeholder="Tafuta aina, mtumiaji, risiti au kumbukumbu..." aria-label="Tafuta historia ya miamala"></div>
-        <select id="v23HistoryType" onchange="v23RenderHistory()" class="border rounded-lg px-3 py-2"><option value="">Aina zote</option><option value="Mchango">Mchango</option><option value="Msaada wa Maafa">Msaada wa Maafa</option><option value="Matumizi ya Mfuko">Matumizi ya Mfuko</option></select>
+        <select id="v23HistoryType" onchange="v23RenderHistory()" class="border rounded-lg px-3 py-2"><option value="">Aina zote</option><option value="Mchango">Mchango</option><option value="Msaada wa Maafa">Msaada wa Maafa</option><option value="Matumizi ya Mfuko">Matumizi ya Mfuko</option><option value="Malipo ya Deni la Makato">Malipo ya Deni la Makato</option></select>
         <input id="v23HistoryFrom" type="date" onchange="v23RenderHistory()" class="border rounded-lg px-3 py-2">
         <input id="v23HistoryTo" type="date" onchange="v23RenderHistory()" class="border rounded-lg px-3 py-2">
       </div>
@@ -730,6 +732,7 @@ Jisajili kama Mwanafamilia
 <div class="bg-white rounded-xl shadow p-4"><p class="text-xs text-slate-500">Waliozimwa</p><p id="usersInactiveCount" class="text-2xl font-bold mt-1">0</p></div>
 <div class="bg-white rounded-xl shadow p-4"><p class="text-xs text-slate-500">Administrators</p><p id="usersAdminCount" class="text-2xl font-bold mt-1">0</p></div>
 </div>
+<div id="usersFamilyLinkWarning" class="hidden rounded-xl border border-amber-300 bg-amber-50 text-amber-900 p-3 mb-4 text-sm" role="status" aria-live="polite"></div>
 <div class="bg-white rounded-xl shadow p-4 mb-4">
 <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
 <div class="md:col-span-2"><label class="block text-xs font-semibold text-slate-500 mb-1">Tafuta mtumiaji</label><div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" aria-hidden="true">🔎</span><input id="usersSearch" oninput="renderUsers()" type="search" placeholder="Jina, simu au role..." class="w-full border rounded-lg pl-10 pr-3 py-2" aria-label="Tafuta mtumiaji kwa jina, simu au role"></div></div>
@@ -747,6 +750,7 @@ Jisajili kama Mwanafamilia
 <th class="text-left p-3">Role</th>
 <th class="text-left p-3">Hali</th>
 <th class="text-left p-3">Uhakiki wa Mwanafamilia</th>
+<th class="text-left p-3">Muunganisho wa Akaunti</th>
 <th class="text-right p-3">Vitendo</th>
 </tr>
 </thead>
@@ -898,7 +902,7 @@ Badili Neno Siri
 </div>
 <input type="hidden" id="contributionEditId" value="">
 <label class="block text-sm font-semibold mb-1">Tarehe</label>
-<input id="contributionDate" type="date" class="w-full border rounded-lg px-3 py-3 mb-4">
+<input id="contributionDate" type="date" min="2026-09-01" class="w-full border rounded-lg px-3 py-3 mb-4">
 <label class="block text-sm font-semibold mb-1">Aina ya Mchangiaji</label>
 <select id="contributorType" onchange="updateMinimumContribution(); updateContributorInputMode()" class="w-full border rounded-lg px-3 py-3 mb-4">
 <option value="Mwanafamilia">Mwanafamilia</option>
@@ -1129,6 +1133,7 @@ const FAMILY_MONTHLY_CONTRIBUTION = 10000;
 // Wanafamilia waliokuwepo kabla ya hapo huanza wajibu wao September;
 // aliyeongezwa baadaye huanza mwezi wa kujiunga kwake.
 const FAMILY_CONTRIBUTION_START_MONTH = '2026-09';
+const FAMILY_CONTRIBUTION_START_DATE = '2026-09-01';
 
 // Hutoa mwezi wa sasa kwa mfumo wa YYYY-MM. Hivyo wajibu wa mchango
 // unaendelea kujiongeza kiotomatiki kila mwezi bila kubadili code.
@@ -1558,8 +1563,30 @@ async function v23LoadHistory(force=false){
   if(!v23CanView())return;
   try{
     ensureClient();
-    const {data,error}=await supabaseClient.rpc('get_transaction_history_v23');
-    if(error)throw error; v23HistoryRows=data||[]; v23RenderHistory();
+    const [historyResult,repaymentResult]=await Promise.all([
+      supabaseClient.rpc('get_transaction_history_v23'),
+      supabaseClient.from('disaster_contribution_deduction_payments').select('id,deduction_id,family_member_id,payment_date,amount,payment_method,payment_reference,created_by').order('payment_date',{ascending:false})
+    ]);
+    if(historyResult.error)throw historyResult.error;
+    if(repaymentResult.error)throw repaymentResult.error;
+    const repaymentRows=(repaymentResult.data||[]).map(r=>({
+      transaction_date:r.payment_date,
+      event_at:r.payment_date,
+      transaction_type:'Malipo ya Deni la Makato',
+      action:'payment_received',
+      action_label:'Yamepokelewa',
+      actor_name:r.created_by||'Mhasibu',
+      user_id:r.created_by||null,
+      record_id:'DLM-'+r.id,
+      receipt_number:'DLM-'+r.id,
+      transaction_reference:r.payment_reference||null,
+      payment_method:r.payment_method||null,
+      amount:Number(r.amount||0),
+      old_data:null,
+      new_data:{deduction_id:r.deduction_id,family_member_id:r.family_member_id}
+    }));
+    v23HistoryRows=[...(historyResult.data||[]),...repaymentRows].sort((a,b)=>String(b.transaction_date||b.event_at||'').localeCompare(String(a.transaction_date||a.event_at||'')));
+    v23RenderHistory();
   }catch(e){console.error(e);document.getElementById('v23HistoryBody').innerHTML='<tr><td colspan="7" class="v23-empty v23-danger">Imeshindikana kupakia Historia ya Miamala: '+escapeHtml(e.message)+'</td></tr>';}
 }
 function v23RenderHistory(){
@@ -1654,33 +1681,56 @@ async function openFamilyLedger(memberId){
   document.getElementById('ledgerSummary').textContent='Historia ya michango, makato ya maafa na misaada ya mwanafamilia huyu.';
   modal.classList.remove('hidden'); modal.classList.add('flex');
   document.getElementById('ledgerTable').innerHTML='<tr><td colspan="5" class="p-6 text-center text-slate-500">Inapakia historia...</td></tr>';
-  const [cr,dd,dr]=await Promise.all([
+  const [cr,dd,dr,repaymentsResult]=await Promise.all([
     supabaseClient.from('contributions').select('id,family_member_id,receipt_number,contribution_date,amount,payment_method,transaction_reference,is_deleted').eq('is_deleted',false).eq('family_member_id',member.id).order('contribution_date',{ascending:false}),
-    supabaseClient.from('disaster_contribution_deductions').select('id,family_member_id,amount,deduction_date,is_deleted').eq('is_deleted',false).eq('family_member_id',member.id).order('deduction_date',{ascending:false}),
+    supabaseClient.from('disaster_contribution_deductions').select('id,family_member_id,amount,deducted_amount,outstanding_amount,deduction_date,is_deleted').eq('is_deleted',false).eq('family_member_id',member.id).order('deduction_date',{ascending:false}),
+    supabaseClient.from('disaster_contribution_deduction_payments').select('id,deduction_id,family_member_id,payment_date,amount,payment_method,payment_reference').eq('family_member_id',member.id).order('payment_date',{ascending:false}),
     supabaseClient.from('disaster_assistance').select('id,assistance_date,amount,disaster_type,approval_status,payment_status,is_deleted').eq('is_deleted',false).eq('family_member_id',member.id).order('assistance_date',{ascending:false})
   ]);
-  if(cr.error||dd.error||dr.error){
-    console.error('Family ledger:',cr.error,dd.error,dr.error);
+  if(cr.error||dd.error||dr.error||repaymentsResult.error){
+    console.error('Family ledger:',cr.error,dd.error,dr.error,repaymentsResult.error);
     document.getElementById('ledgerTable').innerHTML=`<tr><td colspan="5" class="p-6 text-center text-red-600">Imeshindikana kupakia historia.</td></tr>`;
     return;
   }
-  const contributionRows=cr.data||[], deductionRows=dd.data||[], assistanceRows=dr.data||[];
+  const contributionRows=cr.data||[], deductionRows=dd.data||[], assistanceRows=dr.data||[], repaymentRows=repaymentsResult.data||[];
   const totalContrib=contributionRows.reduce((a,x)=>a+Math.max(0,Number(x.amount||0)),0);
-  const totalDeducted=deductionRows.reduce((a,x)=>a+Math.max(0,Number(x.amount||0)),0);
+  const totalDeducted=deductionRows.reduce((a,x)=>a+Math.max(0,Number(x.deducted_amount||0)),0);
+  const totalOutstanding=deductionRows.reduce((a,x)=>a+Math.max(0,Number(x.outstanding_amount||0)),0);
+  const totalRepaid=repaymentRows.reduce((a,x)=>a+Math.max(0,Number(x.amount||0)),0);
   const availableBalance=Math.max(totalContrib-totalDeducted,0);
   const totalPaid=assistanceRows.filter(x=>x.payment_status==='Imelipwa').reduce((a,x)=>a+Math.max(0,Number(x.amount||0)),0);
   const events=[
     ...contributionRows.map(x=>({date:x.contribution_date,type:'Mchango',desc:`Risiti ${x.receipt_number||'-'} • ${x.payment_method||'-'}`,amount:Math.max(0,Number(x.amount||0)),status:'Imepokelewa'})),
-    ...deductionRows.map(x=>({date:x.deduction_date,type:'Makato ya Maafa',desc:'Kiasi kilichokatwa kutoka kwenye salio la mchango',amount:-Math.max(0,Number(x.amount||0)),status:'Imetekelezwa'})),
+    ...deductionRows.map(x=>({date:x.deduction_date,type:'Mgao wa Makato',desc:'Mgao: TZS '+money(x.amount)+' • Kilichokatwa: TZS '+money(x.deducted_amount)+' • Deni: TZS '+money(x.outstanding_amount),amount:-Math.max(0,Number(x.deducted_amount||0)),status:Math.max(0,Number(x.outstanding_amount||0))>0?`Deni TZS ${money(x.outstanding_amount)} ${['Administrator','Mhasibu'].includes(currentProfile?.role)?`<button type=\"button\" onclick=\"event.stopPropagation();repayDisasterDeduction(${Number(x.id)},${Number(x.outstanding_amount)})\" class=\"ml-2 text-blue-700 underline font-semibold\">Pokea malipo</button>`:''}`:'Imekamilika',rawStatus:true})),
+    ...repaymentRows.map(x=>({date:x.payment_date,type:'Malipo ya Deni la Makato',desc:(x.payment_method||'-')+(x.payment_reference?' • '+x.payment_reference:''),amount:Math.max(0,Number(x.amount||0)),status:'Yamepokelewa'})),
     ...assistanceRows.map(x=>({date:x.assistance_date,type:'Msaada wa Maafa',desc:(x.disaster_type||'Msaada')+' • '+(x.payment_status==='Imelipwa'?'Umelipwa':'Haujalipwa'),amount:Math.max(0,Number(x.amount||0)),status:x.payment_status||x.approval_status||'-',neutral:true}))
   ].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
   document.getElementById('ledgerKpis').innerHTML=[
     ['Michango',contributionRows.length],
     ['Alichangia','TZS '+money(totalContrib)],
-    ['Makato ya Maafa','TZS '+money(totalDeducted)],
+    ['Makato yaliyokatwa','TZS '+money(totalDeducted)],
+    ['Deni la Makato','TZS '+money(totalOutstanding)],
+    ['Deni lililolipwa','TZS '+money(totalRepaid)],
     ['Salio la Mchango','TZS '+money(availableBalance)]
   ].map(x=>`<div class="bg-slate-50 rounded-xl p-4"><div class="text-xs text-slate-500">${x[0]}</div><div class="font-bold text-lg mt-1">${x[1]}</div></div>`).join('');
-  document.getElementById('ledgerTable').innerHTML=events.length?events.map(x=>`<tr class="border-t"><td class="p-3">${escapeHtml(x.date||'-')}</td><td class="p-3 font-semibold">${escapeHtml(x.type)}</td><td class="p-3">${escapeHtml(x.desc)}</td><td class="p-3 text-right font-bold ${x.neutral?'text-slate-700':x.amount<0?'text-red-600':'text-green-700'}">${x.neutral?'':x.amount<0?'-':'+'}TZS ${money(Math.abs(x.amount))}</td><td class="p-3">${escapeHtml(x.status)}</td></tr>`).join(''):'<tr><td colspan="5" class="p-6 text-center text-slate-500">Hakuna historia ya miamala.</td></tr>';
+  document.getElementById('ledgerTable').innerHTML=events.length?events.map(x=>`<tr class="border-t"><td class="p-3">${escapeHtml(x.date||'-')}</td><td class="p-3 font-semibold">${escapeHtml(x.type)}</td><td class="p-3">${escapeHtml(x.desc)}</td><td class="p-3 text-right font-bold ${x.neutral?'text-slate-700':x.amount<0?'text-red-600':'text-green-700'}">${x.neutral?'':x.amount<0?'-':'+'}TZS ${money(Math.abs(x.amount))}</td><td class="p-3">${x.rawStatus?x.status:escapeHtml(x.status)}</td></tr>`).join(''):'<tr><td colspan="5" class="p-6 text-center text-slate-500">Hakuna historia ya miamala.</td></tr>';
+}
+async function repayDisasterDeduction(deductionId,outstanding){
+  if(!['Administrator','Mhasibu'].includes(currentProfile?.role)){alert('Administrator au Mhasibu ndiye anayeruhusiwa kupokea malipo ya deni.');return;}
+  const amountText=prompt('Weka kiasi cha deni la makato kilichopokelewa (kisizidi TZS '+money(outstanding)+'):',String(outstanding));
+  if(amountText===null)return;
+  const amount=Number(String(amountText).replace(/,/g,''));
+  if(!Number.isFinite(amount)||amount<=0||amount>Number(outstanding)){alert('Kiasi si sahihi au kinazidi deni lililobaki.');return;}
+  const method=prompt('Weka njia ya malipo (Cash, M-Pesa, Bank n.k.):','Cash');
+  if(method===null)return;
+  const cleanMethod=validatePaymentMethod(method,{required:true}); if(cleanMethod===null)return;
+  const reference=prompt('Namba ya kumbukumbu ya malipo (hiari):','');
+  const {data,error}=await supabaseClient.rpc('record_disaster_deduction_repayment',{p_deduction_id:Number(deductionId),p_amount:amount,p_payment_method:cleanMethod,p_payment_reference:reference?.trim()||null});
+  if(error){alert('Imeshindikana kupokea malipo: '+(error.message||'Hitilafu.'));return;}
+  alert('Malipo ya deni yamepokelewa. Kiasi: TZS '+money(data?.paid_now||amount)+'. Deni lililobaki: TZS '+money(data?.outstanding_amount||0)+'.');
+  const memberId=data?.family_member_id;
+  if(memberId) await openFamilyLedger(memberId);
+  await loadDashboard(); await loadFinanceDashboard(); await loadFamilyContributionStatus();
 }
 function closeFamilyLedger(){const m=document.getElementById('familyLedgerModal');if(m){m.classList.add('hidden');m.classList.remove('flex');}}
 
@@ -1755,21 +1805,23 @@ async function downloadSystemBackup(){
   try{
     // Tumia pagination na mpangilio thabiti wa ID ili backup isikose rekodi
     // pale jedwali linapozidi kikomo cha kawaida cha API cha rekodi 1,000.
-    const [fr,cr,er,dr,dd,pr,sr,sn]=await Promise.all([
+    const [fr,cr,er,dr,dd,dp,pr,sr,sn,al]=await Promise.all([
       fetchAllDashboardRows('family_members','*',q=>q.order('id',{ascending:true})),
       fetchAllDashboardRows('contributions','*',q=>q.order('id',{ascending:true})),
-      fetchAllDashboardRows('fund_expenses','*',q=>q.order('id',{ascending:true})),
+      fetchAllDashboardRows('fund_expenses_accessible','*',q=>q.order('id',{ascending:true})),
       fetchAllDashboardRows('disaster_assistance','*',q=>q.order('id',{ascending:true})),
       fetchAllDashboardRows('disaster_contribution_deductions','*',q=>q.order('id',{ascending:true})),
+      fetchAllDashboardRows('disaster_contribution_deduction_payments','*',q=>q.order('id',{ascending:true})),
       fetchAllDashboardRows('profiles','id,first_name,middle_name,last_name,phone,role,is_active,created_at,updated_at',q=>q.order('id',{ascending:true})),
       fetchAllDashboardRows('system_settings','*',q=>q.order('id',{ascending:true})),
-      fetchAllDashboardRows('system_notifications','*',q=>q.order('id',{ascending:true}))
+      fetchAllDashboardRows('system_notifications','*',q=>q.order('id',{ascending:true})),
+      fetchAllDashboardRows('audit_logs','*',q=>q.order('id',{ascending:true}))
     ]);
-    const bad=[fr,cr,er,dr,dd,pr,sr,sn].find(x=>x.error); if(bad)throw bad.error;
-    const backup={schema_version:'MoNyakorema-backup-v3',included_tables:['family_members','contributions','fund_expenses','disaster_assistance','disaster_contribution_deductions','profiles','system_settings','system_notifications'],exported_at:new Date().toISOString(),exported_by:currentUser?.id||null,data:{family_members:fr.data||[],contributions:cr.data||[],fund_expenses:er.data||[],disaster_assistance:dr.data||[],disaster_contribution_deductions:dd.data||[],profiles:pr.data||[],system_settings:sr.data||[],system_notifications:sn.data||[]}};
+    const bad=[fr,cr,er,dr,dd,dp,pr,sr,sn,al].find(x=>x.error); if(bad)throw bad.error;
+    const backup={schema_version:'MoNyakorema-backup-v3',included_tables:['family_members','contributions','fund_expenses','disaster_assistance','disaster_contribution_deductions','disaster_contribution_deduction_payments','profiles','system_settings','system_notifications','audit_logs'],exported_at:new Date().toISOString(),exported_by:currentUser?.id||null,data:{family_members:fr.data||[],contributions:cr.data||[],fund_expenses:er.data||[],disaster_assistance:dr.data||[],disaster_contribution_deductions:dd.data||[],disaster_contribution_deduction_payments:dp.data||[],profiles:pr.data||[],system_settings:sr.data||[],system_notifications:sn.data||[],audit_logs:al.data||[]}};
     const json=JSON.stringify(backup,null,2);
     downloadTextFile(json,'monyakorema-backup-'+localDateISO()+'.json','application/json;charset=utf-8');
-    document.getElementById('backupStatus').textContent='Backup kamili imeandaliwa kwa kupakuliwa: '+new Date().toLocaleString('sw-TZ');
+    document.getElementById('backupStatus').textContent='Backup ya data na historia ya shughuli imeandaliwa kwa kupakuliwa: '+new Date().toLocaleString('sw-TZ');
   }catch(e){console.error(e);alert('Imeshindikana kutengeneza backup: '+(e?.message||e));}finally{unlockActionButton(button,'Pakua Backup ya Mfumo');}
 }
 
@@ -1779,8 +1831,32 @@ async function downloadSystemBackup(){
 let selectedRestoreBackup = null;
 const RESTORE_TABLE_ORDER = [
   'family_members','contributions','fund_expenses','disaster_assistance',
-  'disaster_contribution_deductions','system_settings','system_notifications'
+  'disaster_contribution_deductions','disaster_contribution_deduction_payments','system_settings','system_notifications','audit_logs'
 ];
+function validateRestoreBackupPayload(b){
+  if(!Array.isArray(b.data.profiles)) throw new Error('Backup haijakamilika: sehemu ya profiles haipo au si orodha.');
+  if(!Array.isArray(b.data.disaster_contribution_deduction_payments)) b.data.disaster_contribution_deduction_payments=[]; // Backups za zamani hazikuwa na historia ya marejesho.
+  const auditLogsIncluded=Array.isArray(b.data.audit_logs);
+  if(!auditLogsIncluded) b.data.audit_logs=[]; // Backups za zamani za v3 hazikuwa na audit_logs.
+
+  for(const t of RESTORE_TABLE_ORDER){
+    if(!Array.isArray(b.data[t])) throw new Error('Backup haijakamilika: sehemu ya '+t+' haipo au si orodha.');
+    if(b.data[t].some(row=>!row||typeof row!=='object'||Array.isArray(row))) throw new Error('Kuna rekodi isiyo sahihi kwenye '+t+'.');
+    const ids=b.data[t].map(row=>row.id).filter(id=>id!==undefined&&id!==null).map(String);
+    if(new Set(ids).size!==ids.length) throw new Error('Backup ina ID zinazojirudia kwenye '+t+'. Tengeneza backup mpya badala ya kuendelea.');
+  }
+  const memberIds=new Set(b.data.family_members.map(r=>String(r.id)));
+  const assistanceIds=new Set(b.data.disaster_assistance.map(r=>String(r.id)));
+  const missingMember=(table)=>b.data[table].some(r=>r.family_member_id!==null&&r.family_member_id!==undefined&&!memberIds.has(String(r.family_member_id)));
+  if(missingMember('contributions')||missingMember('disaster_assistance')||missingMember('disaster_contribution_deductions')) throw new Error('Backup ina rekodi zinazotaja mwanafamilia ambaye hayupo kwenye sehemu ya family_members. Hakikisha backup imekamilika kisha ujaribu tena.');
+  if(b.data.disaster_contribution_deductions.some(r=>r.disaster_assistance_id!==null&&r.disaster_assistance_id!==undefined&&!assistanceIds.has(String(r.disaster_assistance_id)))) throw new Error('Backup ina makato yanayotaja rekodi ya msaada wa maafa ambayo haipo kwenye sehemu ya disaster_assistance.');
+  const deductionIds=new Set(b.data.disaster_contribution_deductions.map(r=>String(r.id)));
+  if(Array.isArray(b.data.disaster_contribution_deduction_payments) && b.data.disaster_contribution_deduction_payments.some(r=>!deductionIds.has(String(r.deduction_id))||!memberIds.has(String(r.family_member_id)))) throw new Error('Backup ina malipo ya deni yanayotaja makato au mwanafamilia ambaye hayupo kwenye backup.');
+  return {
+    notificationRecipientsMissingFromBackup:b.data.system_notifications.filter(r=>r.recipient_user_id&&!b.data.profiles.some(p=>String(p.id)===String(r.recipient_user_id))).length,
+    auditLogsIncluded
+  };
+}
 function previewSystemBackup(input){
   const preview=document.getElementById('restoreBackupPreview');
   const button=document.getElementById('restoreBackupButton');
@@ -1796,14 +1872,12 @@ function previewSystemBackup(input){
     try{
       const b=JSON.parse(String(reader.result||''));
       if(!b || b.schema_version!=='MoNyakorema-backup-v3' || !b.data || typeof b.data!=='object') throw new Error('Faili hili si backup inayotambulika ya Mo’Nyakorema (v3).');
-      const bad=RESTORE_TABLE_ORDER.find(t=>!Array.isArray(b.data[t]));
-      if(bad) throw new Error('Backup haijakamilika: sehemu ya '+bad+' haipo au si orodha.');
-      for(const t of RESTORE_TABLE_ORDER){
-        if(b.data[t].some(row=>!row||typeof row!=='object'||Array.isArray(row))) throw new Error('Kuna rekodi isiyo sahihi kwenye '+t+'.');
-      }
+      const validation=validateRestoreBackupPayload(b);
       selectedRestoreBackup=b;
-      const names={family_members:'Wanafamilia',contributions:'Michango',fund_expenses:'Matumizi ya mfuko',disaster_assistance:'Msaada wa maafa',disaster_contribution_deductions:'Makato ya michango',system_settings:'Mipangilio',system_notifications:'Taarifa'};
-      preview.innerHTML='<p class="font-bold mb-2">Backup imesomwa — '+escapeHtml(b.exported_at||'Tarehe haijatajwa')+'</p><ul class="space-y-1">'+RESTORE_TABLE_ORDER.map(t=>'<li class="flex justify-between gap-3"><span>'+names[t]+'</span><strong>'+b.data[t].length.toLocaleString('sw-TZ')+'</strong></li>').join('')+'</ul><p class="mt-3 text-amber-800">Huu ni urejeshaji wa kuongeza tu. Rekodi zilizopo hazitafutwa wala kuandikwa upya. Profaili/akaunti za Auth hazitarejeshwa. Rekodi zinazotegemea akaunti za Auth zisizopo zinaweza kusababisha urejeshaji wote kurudishwa nyuma. Hifadhi backup nyingine kabla ya kujaribu. Ili kutumia urejeshaji salama wa transaction moja, sakinisha kwanza faili la V135-MoNyakorema-Restore.sql kwenye Supabase SQL Editor.</p>';
+      const names={family_members:'Wanafamilia',contributions:'Michango',fund_expenses:'Matumizi ya mfuko',disaster_assistance:'Msaada wa maafa',disaster_contribution_deductions:'Makato ya michango',disaster_contribution_deduction_payments:'Malipo ya madeni ya makato',system_settings:'Mipangilio',system_notifications:'Taarifa',audit_logs:'Historia ya shughuli'};
+      const auditWarning=!validation.auditLogsIncluded?'<p class="mt-2 text-amber-800">Tahadhari: backup hii ya zamani haina historia ya shughuli (audit logs); taarifa hizo haziwezi kurejeshwa kutoka kwenye faili hili.</p>':'';
+      const recipientWarning=validation.notificationRecipientsMissingFromBackup?'<p class="mt-2 text-amber-800">Tahadhari: taarifa '+validation.notificationRecipientsMissingFromBackup+' zina mpokeaji ambaye hayupo kwenye orodha ya profiles ya backup. Kama akaunti hiyo haipo kwenye mradi lengwa, urejeshaji unaweza kushindwa.</p>':'';
+      preview.innerHTML='<p class="font-bold mb-2">Backup imesomwa — '+escapeHtml(b.exported_at||'Tarehe haijatajwa')+'</p><ul class="space-y-1">'+RESTORE_TABLE_ORDER.map(t=>'<li class="flex justify-between gap-3"><span>'+names[t]+'</span><strong>'+b.data[t].length.toLocaleString('sw-TZ')+'</strong></li>').join('')+'</ul><p class="mt-3 text-amber-800">Ukaguzi wa awali umepita: hakuna ID zinazojirudia au marejeo ya ndani yaliyokosekana. Urejeshaji huu ni wa kuongeza tu; rekodi zilizopo hazitaandikwa upya. Profaili/akaunti za Auth na nywila hazitarejeshwa. Tumia backup hii kwenye mradi uleule wa Supabase uliyoitengeneza inapowezekana; kuhamisha kwenye mradi mwingine kunaweza kusababisha migongano ya ID na mahusiano.</p>'+recipientWarning+auditWarning+'<p class="mt-2 text-slate-700">Urejeshaji wa historia ya shughuli unahitaji SQL ya V137 kusakinishwa Supabase SQL Editor. Akaunti za Auth na nywila hazitarejeshwa; kurejesha kwenye mradi tofauti kunaweza kushindwa kwa marejeo ya watumiaji.</p>';
       button.disabled=false;
     }catch(e){selectedRestoreBackup=null;preview.textContent='Imeshindikana kusoma backup: '+(e.message||e);}
   };
@@ -1814,17 +1888,17 @@ async function restoreSystemBackup(){
   if(currentProfile?.role!=='Administrator'){alert('Administrator pekee ndiye anayeruhusiwa kurejesha backup.');return;}
   if(!selectedRestoreBackup){alert('Chagua na hakiki faili la backup kwanza.');return;}
   if(!document.getElementById('restoreBackupConfirm').checked){alert('Weka tiki kuthibitisha kuwa umeelewa tahadhari.');return;}
-  const ok=confirm('Urejeshaji utafanyika ndani ya transaction moja ya database: ama rekodi zote zinazokubalika zitaongezwa pamoja, au mabadiliko yote ya jaribio hili yatarejeshwa ikiwa kuna hitilafu. Rekodi zilizopo hazitaandikwa upya. Endelea?');
+  const ok=confirm('Hakikisha una backup ya sasa ya database na umechagua mradi sahihi wa Supabase. Urejeshaji utafanyika ndani ya transaction moja: ama rekodi zote zinazokubalika zitaongezwa, au mabadiliko yote ya jaribio hili yatarejeshwa ikiwa kuna hitilafu. Rekodi zilizopo hazitaandikwa upya. Endelea?');
   if(!ok)return;
   const button=document.getElementById('restoreBackupButton'); if(!lockActionButton(button,'Inarejesha...'))return;
   const status=document.getElementById('restoreBackupStatus');
   try{
     status.textContent='Inakagua ruhusa na kurejesha backup kwa usalama...';
-    // Server-side RPC must be installed using V135-MoNyakorema-Restore.sql first.
+    // Server-side RPC must be installed using V137-MoNyakorema-Restore.sql first.
     const {data,error}=await supabaseClient.rpc('restore_monyakorema_backup',{p_backup:selectedRestoreBackup});
     if(error) throw new Error(error.message||'Supabase imerudisha hitilafu.');
     const results=(data&&data.tables&&typeof data.tables==='object')?data.tables:{};
-    const labels={family_members:'Wanafamilia',contributions:'Michango',fund_expenses:'Matumizi',disaster_assistance:'Msaada wa maafa',disaster_contribution_deductions:'Makato',system_settings:'Mipangilio',system_notifications:'Taarifa'};
+    const labels={family_members:'Wanafamilia',contributions:'Michango',fund_expenses:'Matumizi',disaster_assistance:'Msaada wa maafa',disaster_contribution_deductions:'Makato',disaster_contribution_deduction_payments:'Malipo ya madeni ya makato',system_settings:'Mipangilio',system_notifications:'Taarifa'};
     const lines=RESTORE_TABLE_ORDER.map(t=>`${labels[t]}: zimeongezwa ${Number(results[t]?.inserted||0)}, zimerukwa ${Number(results[t]?.skipped||0)}`);
     status.textContent='Urejeshaji wa transaction umekamilika. '+lines.join(' | ')+(data?.profiles_skipped?' | Profaili zimeachwa: '+data.profiles_skipped:'');
     alert(status.textContent+' Rekodi zilizokuwepo hazikuandikwa upya.');
@@ -1945,9 +2019,9 @@ async function loadDashboard(){
     const [membersResult,contributionResult,expenseResult,disasterResult,deductionResult]=await Promise.all([
         fetchAllDashboardRows('family_members','id,first_name,middle_name,last_name,phone,is_active,created_at,contribution_eligibility,contribution_start_month',q=>q.eq('is_active',true).order('id',{ascending:true})),
         fetchAllDashboardRows('contributions','id,family_member_id,amount,contributor_type,contribution_date,receipt_number,first_name,middle_name,last_name,phone,payment_method,is_deleted',q=>q.eq('is_deleted',false).order('contribution_date',{ascending:false})),
-        fetchAllDashboardRows('fund_expenses','id,amount,expense_date,category,description,is_deleted',q=>q.eq('is_deleted',false).order('expense_date',{ascending:false})),
+        fetchAllDashboardRows('fund_expenses_accessible','id,amount,expense_date,category,description,is_deleted',q=>q.eq('is_deleted',false).order('expense_date',{ascending:false})),
         fetchAllDashboardRows('disaster_assistance','id,amount,assistance_date,disaster_type,payment_status,status,is_deleted',q=>q.eq('is_deleted',false).order('assistance_date',{ascending:false})),
-        fetchAllDashboardRows('disaster_contribution_deductions','id,amount,deduction_date,is_deleted',q=>q.eq('is_deleted',false).order('deduction_date',{ascending:false}))
+        fetchAllDashboardRows('disaster_contribution_deductions','id,amount,deducted_amount,outstanding_amount,deduction_date,is_deleted',q=>q.eq('is_deleted',false).order('deduction_date',{ascending:false}))
     ]);
     const error=membersResult.error||contributionResult.error||expenseResult.error||disasterResult.error||deductionResult.error;
     if(error){
@@ -1968,7 +2042,7 @@ async function loadDashboard(){
     const total=rows.reduce((sum,row)=>sum+Math.max(0,Number(row.amount||0)),0);
     const totalExpenses=expenses.reduce((sum,row)=>sum+Math.max(0,Number(row.amount||0)),0);
     const totalDisasterPaid=disasterRows.filter(row=>row.payment_status==='Imelipwa').reduce((sum,row)=>sum+Math.max(0,Number(row.amount||0)),0);
-    const totalDeductions=deductionRows.reduce((sum,row)=>sum+Math.max(0,Number(row.amount||0)),0);
+    const totalDeductions=deductionRows.reduce((sum,row)=>sum+Math.max(0,Number(row.deducted_amount||0)),0);
     const familyRows=rows.filter(row=>row.contributor_type==='Mwanafamilia');
     const stakeholderRows=rows.filter(row=>row.contributor_type!=='Mwanafamilia');
     const familyAmount=familyRows.reduce((sum,row)=>sum+Math.max(0,Number(row.amount||0)),0);
@@ -2005,18 +2079,16 @@ async function loadDashboard(){
     setDashMoney('dashboardExpenses',totalExpenses);
     setDashMoney('dashboardDisasterPaid',totalDisasterPaid);
     setDashMoney('dashboardDeductions',totalDeductions);
-    // Mfumo wa salio hutumia mapato yote ukitoa matumizi na misaada iliyolipwa.
-    setDashMoney('dashboardNet',total-totalExpenses-totalDisasterPaid);
+    // Salio rasmi linajumuisha marejesho ya madeni ya makato pamoja na mapato mengine.
     const balanceResult=await supabaseClient.rpc('get_fund_balance');
     if(balanceResult.error){
         console.error('Fund balance:',balanceResult.error);
+        setDashMoney('dashboardNet',total-totalExpenses-totalDisasterPaid);
     }else{
         const balanceRow=Array.isArray(balanceResult.data)?balanceResult.data[0]:balanceResult.data;
         const balance=Number(balanceRow?.fund_balance||0);
         setDashMoney('dashboardFundBalance',balance);
-        if(Math.abs(balance-(total-totalExpenses-totalDisasterPaid))>0.01){
-            console.warn('Dashboard net and Supabase fund balance differ:',{dashboardNet:total-totalExpenses-totalDisasterPaid,rpcBalance:balance});
-        }
+        setDashMoney('dashboardNet',balance);
     }
 
     // Ramani ya majina huruhusu malipo yasiyo na family_member_id kuhusishwa
@@ -2196,7 +2268,7 @@ async function loadFamilyMembers(attempt=1){
 
         const {data,error}=await supabaseClient
             .from("family_members")
-            .select("id,first_name,middle_name,last_name,phone,email,gender,date_of_birth,marital_status,life_status,address,relationship,is_active,created_at,updated_at,contribution_eligibility,contribution_start_month")
+            .select("id,profile_id,first_name,middle_name,last_name,phone,email,gender,date_of_birth,marital_status,life_status,address,relationship,is_active,created_at,updated_at,contribution_eligibility,contribution_start_month")
             .eq("is_active",true)
             .order("id",{ascending:true});
 
@@ -2286,7 +2358,7 @@ async function loadFamilyContributionStatus(){
     table.innerHTML='<tr><td colspan="8" class="p-6 text-center text-slate-500">Inapakia hali ya michango...</td></tr>';
     const [contributionResult,deductionResult]=await Promise.all([
         fetchAllDashboardRows('contributions','id,family_member_id,first_name,middle_name,last_name,amount,contribution_date,is_deleted,contributor_type',q=>q.eq('is_deleted',false).eq('contributor_type','Mwanafamilia').order('id',{ascending:true})),
-        fetchAllDashboardRows('disaster_contribution_deductions','id,family_member_id,amount,deduction_date,is_deleted',q=>q.eq('is_deleted',false).order('id',{ascending:true}))
+        fetchAllDashboardRows('disaster_contribution_deductions','id,family_member_id,amount,deducted_amount,outstanding_amount,deduction_date,is_deleted',q=>q.eq('is_deleted',false).order('id',{ascending:true}))
     ]);
     const {data,error}=contributionResult;
     const {data:deductionData,error:deductionError}=deductionResult;
@@ -2298,11 +2370,14 @@ async function loadFamilyContributionStatus(){
     }
 
     const deductedByMember=new Map();
+    const deductionDebtByMember=new Map();
     (deductionData||[]).forEach(row=>{
         const id=String(row.family_member_id||'');
         if(!id)return;
-        const amount=Math.max(0,Number(row.amount||0));
+        const amount=Math.max(0,Number(row.deducted_amount||0));
         deductedByMember.set(id,(deductedByMember.get(id)||0)+amount);
+        const outstanding=Math.max(0,Number(row.outstanding_amount||0));
+        deductionDebtByMember.set(id,(deductionDebtByMember.get(id)||0)+outstanding);
     });
 
     const byId=new Map(), byUnlinkedName=new Map();
@@ -2347,7 +2422,7 @@ async function loadFamilyContributionStatus(){
         if(monthRows.length && excess>0) monthRows[monthRows.length-1].excess=excess;
         const deducted=Math.min(totalPaid,Math.max(0,Number(deductedByMember.get(String(member.id))||0)));
         const availableBalance=Math.max(totalPaid-deducted,0);
-        return {member,eligible:isContributionEligible(member),months:months.length,due,total:totalPaid,deducted,availableBalance,debt,excess,monthRows};
+        return {member,eligible:isContributionEligible(member),months:months.length,due,total:totalPaid,deducted,deductionDebt:Math.max(0,Number(deductionDebtByMember.get(String(member.id))||0)),availableBalance,debt,excess,monthRows};
     });
     renderFamilyContributionStatus();
 }
@@ -2398,7 +2473,7 @@ function renderFamilyContributionStatus(selectedMemberId=null){
           <div class="text-center font-semibold ${m.debt>0?'text-red-600':m.excess>0?'text-green-700':'text-slate-500'}">${m.debt>0?'Deni: TZS '+money(m.debt):m.excess>0?'Ziada: TZS '+money(m.excess):'Imekamilika'}${m.allocated>0?'<div class="text-[10px] font-normal text-slate-500">Imetengwa: TZS '+money(m.allocated)+'</div>':''}</div>
         </div>`).join('');
         return `<tr class="border-t hover:bg-slate-50 align-top">
-          <td class="p-3"><div class="font-semibold">${escapeHtml(fullName(x.member))}</div><div class="text-xs text-slate-500 mt-1">${status}</div>${selectedMemberId?`<div class="mt-3 rounded-lg border bg-slate-50 p-3"><div class="grid grid-cols-4 gap-2 text-[11px] font-bold text-slate-500 border-b pb-2 text-center"><div>Mwezi</div><div>Anatakiwa</div><div>Kiasi alichochanga</div><div>Hali</div></div>${monthly}</div>`:''}</td>
+          <td class="p-3"><div class="font-semibold">${escapeHtml(fullName(x.member))}</div><div class="text-xs text-slate-500 mt-1">${status}</div>${x.deductionDebt>0?`<div class=\"text-xs text-amber-700 mt-1 font-semibold\">Deni la makato ya maafa: TZS ${money(x.deductionDebt)}</div>`:''}${selectedMemberId?`<div class="mt-3 rounded-lg border bg-slate-50 p-3"><div class="grid grid-cols-4 gap-2 text-[11px] font-bold text-slate-500 border-b pb-2 text-center"><div>Mwezi</div><div>Anatakiwa</div><div>Kiasi alichochanga</div><div>Hali</div></div>${monthly}</div>`:''}</td>
           <td class="p-3 text-center">${x.months}</td>
           <td class="p-3 text-center font-semibold ${x.debt>0?'text-red-600':''}">TZS ${money(x.debt)}</td>
           <td class="p-3 text-center font-semibold">TZS ${money(x.total)}</td>
@@ -2733,7 +2808,7 @@ async function saveDisaster(e){
         const id=document.getElementById('disasterId').value;
         const existing=id?disasterAssistance.find(x=>Number(x.id)===Number(id)):null;
         if(existing&&(existing.approval_status!=='Inasubiri'||existing.payment_status==='Imelipwa')){alert('Ombi hili haliwezi kuhaririwa baada ya idhini au malipo.');return;}
-        const payload={family_member_id:memberId,incident_date:incidentDate,assistance_date:assistanceDate,disaster_type:disasterType,amount:disasterAmount,receipt_number:document.getElementById('disasterReceipt').value.trim()||null,status:'Inasubiri',approval_status:'Inasubiri',approval_notes:null,description:document.getElementById('disasterDescription').value.trim()||null,notes:document.getElementById('disasterNotes').value.trim()||null,updated_by:currentUser?.id};
+        const payload={family_member_id:memberId,incident_date:incidentDate,assistance_date:assistanceDate,disaster_type:disasterType,amount:disasterAmount,receipt_number:document.getElementById('disasterReceipt').value.trim()||null,description:document.getElementById('disasterDescription').value.trim()||null,notes:document.getElementById('disasterNotes').value.trim()||null,updated_by:currentUser?.id};
         const result=id?await supabaseClient.from('disaster_assistance').update(payload).eq('id',id):await supabaseClient.from('disaster_assistance').insert({...payload,created_by:currentUser?.id});
         if(result.error){alert('Imeshindikana kuhifadhi: '+result.error.message);return;}
         closeDisasterModal(); await loadDisasterAssistance();
@@ -2748,38 +2823,24 @@ async function decideDisaster(id,decision){
     const row=disasterAssistance.find(x=>Number(x.id)===Number(id));
     if(!row){alert('Kumbukumbu ya msaada haikupatikana.');return;}
     if(row.approval_status!=='Inasubiri'||row.payment_status==='Imelipwa'||row.status==='Imeghairiwa'){alert('Ombi hili tayari limefanyiwa uamuzi au malipo.');return;}
-    if(row.incident_date&&row.assistance_date&&row.incident_date>row.assistance_date){alert('Tarehe ya tukio haiwezi kuwa baada ya tarehe ya msaada.');return;}
-    if(isFutureDate(row.incident_date)||isFutureDate(row.assistance_date)){alert('Tarehe za tukio na msaada haziwezi kuwa za baadaye.');return;}
-    const note=prompt(
-        decision==='Imeidhinishwa'?'Maelezo ya idhini (hiari):':'Sababu ya kukataa:',
-        ''
-    );
-    if(decision==='Imekataliwa'&&!note){
+    const note=prompt(decision==='Imeidhinishwa'?'Maelezo ya idhini (hiari):':'Sababu ya kukataa:','');
+    if(note===null)return;
+    if(decision==='Imekataliwa'&&!note.trim()){
         alert('Weka sababu ya kukataa.');
         return;
     }
-    const patch={approval_status:decision,approval_notes:note||null,updated_by:currentUser?.id};
-    if(decision==='Imeidhinishwa'){
-        patch.approved_by=currentUser?.id;
-        patch.approved_at=new Date().toISOString();
-        patch.status='Inasubiri';
-    }else{
-        patch.rejected_at=new Date().toISOString();
-        patch.status='Imeghairiwa';
-    }
-    const {error}=await supabaseClient
-        .from('disaster_assistance')
-        .update(patch)
-        .eq('id',id)
-        .select()
-        .single();
+    const {error}=await supabaseClient.rpc('decide_disaster_assistance_v149',{
+        p_disaster_id:Number(id),
+        p_decision:decision,
+        p_notes:note.trim()||null
+    });
     if(error){
-        alert(error.message);
+        alert('Imeshindikana kuhifadhi uamuzi: '+error.message);
         return;
     }
     await loadDisasterAssistance();
+    await loadDashboard();
 }
-
 async function approveDisaster(id){
     const lockKey="approve-disaster-"+id;
     if(!lockNamedAction(lockKey)) return;
@@ -2865,14 +2926,15 @@ async function loadFinanceDashboard(){
 
   const balancePromise=supabaseClient.rpc('get_fund_balance');
   let cq=supabaseClient.from('contributions').select('amount,contribution_date,contributor_type').eq('is_deleted',false);
-  let eq=supabaseClient.from('fund_expenses').select('id,expense_date,category,description,amount,payment_method').eq('is_deleted',false).order('expense_date',{ascending:false});
+  let eq=supabaseClient.from('fund_expenses_accessible').select('id,expense_date,category,description,amount,payment_method').order('expense_date',{ascending:false});
   let dq=supabaseClient.from('disaster_assistance').select('id,assistance_date,amount,status,family_member_id,disaster_type,payment_status').eq('is_deleted',false).eq('payment_status','Imelipwa').order('assistance_date',{ascending:false});
-  let ddq=supabaseClient.from('disaster_contribution_deductions').select('id,family_member_id,amount,deduction_date,is_deleted').eq('is_deleted',false);
-  if(from){cq=cq.gte('contribution_date',from);eq=eq.gte('expense_date',from);dq=dq.gte('assistance_date',from);ddq=ddq.gte('deduction_date',from);}
-  if(to){cq=cq.lte('contribution_date',to);eq=eq.lte('expense_date',to);dq=dq.lte('assistance_date',to);ddq=ddq.lte('deduction_date',to);}
-  const [br,cr,er,dr,dd]=await Promise.all([balancePromise,cq,eq,dq,ddq]);
-  if(br.error||cr.error||er.error||dr.error||dd.error){
-    console.error('Finance:',br.error||cr.error||er.error||dr.error);
+  let ddq=supabaseClient.from('disaster_contribution_deductions').select('id,family_member_id,amount,deducted_amount,outstanding_amount,deduction_date,is_deleted').eq('is_deleted',false);
+  let rpq=supabaseClient.from('disaster_contribution_deduction_payments').select('id,payment_date,amount,payment_method,payment_reference').order('payment_date',{ascending:false});
+  if(from){cq=cq.gte('contribution_date',from);eq=eq.gte('expense_date',from);dq=dq.gte('assistance_date',from);ddq=ddq.gte('deduction_date',from);rpq=rpq.gte('payment_date',from);}
+  if(to){cq=cq.lte('contribution_date',to);eq=eq.lte('expense_date',to);dq=dq.lte('assistance_date',to);ddq=ddq.lte('deduction_date',to);rpq=rpq.lte('payment_date',to);}
+  const [br,cr,er,dr,dd,rp]=await Promise.all([balancePromise,cq,eq,dq,ddq,rpq]);
+  if(br.error||cr.error||er.error||dr.error||dd.error||rp.error){
+    console.error('Finance:',br.error||cr.error||er.error||dr.error||dd.error||rp.error);
     if(summary) summary.innerHTML='<div class="bg-red-50 text-red-700 rounded-xl p-5 sm:col-span-2 lg:col-span-5">Imeshindikana kupakia taarifa za fedha. Jaribu tena.</div>';
     return;
   }
@@ -2885,14 +2947,19 @@ async function loadFinanceDashboard(){
   const expenses=er.data||[];
   const disasterRows=dr.data||[];
   const deductionRows=dd.data||[];
+  const repaymentRows=rp.data||[];
+  const repaymentIncome=repaymentRows.reduce((a,r)=>a+Math.max(0,Number(r.amount||0)),0);
   const spent=expenses.reduce((a,r)=>a+Number(r.amount||0),0);
   const disasterSpent=disasterRows.reduce((a,r)=>a+Number(r.amount||0),0);
-  const deductionsRecorded=deductionRows.reduce((a,r)=>a+Math.max(0,Number(r.amount||0)),0);
+  const deductionsRecorded=deductionRows.reduce((a,r)=>a+Math.max(0,Number(r.deducted_amount||0)),0);
+  const deductionDebtOutstanding=deductionRows.reduce((a,r)=>a+Math.max(0,Number(r.outstanding_amount||0)),0);
   if(summary) summary.innerHTML=[
     ['Michango ya kipindi',financeMoney(income)],
+    ['Marejesho ya madeni ya makato',financeMoney(repaymentIncome)],
     ['Matumizi ya kipindi',financeMoney(spent)],
     ['Misaada iliyolipwa kipindi',financeMoney(disasterSpent)],
-    ['Makato ya Maafa yaliyorekodiwa',financeMoney(deductionsRecorded)],
+    ['Makato yaliyokatwa',financeMoney(deductionsRecorded)],
+    ['Madeni ya makato yaliyobaki',financeMoney(deductionDebtOutstanding)],
     ['Salio la Mfuko (jumla)',financeMoney(fundBalance)]
   ].map(x=>`<div class="bg-white rounded-xl shadow p-5"><p class="text-slate-500 text-sm">${x[0]}</p><p class="text-2xl font-bold mt-2">${x[1]}</p></div>`).join('');
   const cats={};
@@ -2943,7 +3010,7 @@ async function saveExpense(e){
         closeExpenseModal(); e.target.reset(); await loadFinanceDashboard();
     }finally{unlockActionButton(button,"Hifadhi");}
 }
-async function deleteExpense(id){if(currentProfile?.role!=='Administrator'){alert('Administrator pekee ndiye anayeruhusiwa kufuta matumizi.');return;}const lockKey="delete-expense-"+id;if(!lockNamedAction(lockKey))return;if(!confirm('Una uhakika unataka kufuta matumizi haya?')){unlockNamedAction(lockKey);return;}try{ensureClient();const {error}=await supabaseClient.from('fund_expenses').delete().eq('id',Number(id));if(error)throw error;alert('Matumizi yamefutwa kikamilifu.');await loadFinanceDashboard();await loadDashboard();}catch(e){console.error(e);alert('Imeshindikana kufuta: '+(e?.message||e));}finally{unlockNamedAction(lockKey);}}
+async function deleteExpense(id){if(currentProfile?.role!=='Administrator'){alert('Administrator pekee ndiye anayeruhusiwa kufuta matumizi.');return;}const lockKey="delete-expense-"+id;if(!lockNamedAction(lockKey))return;if(!confirm('Una uhakika unataka kufuta matumizi haya? Rekodi itafichwa lakini itabaki kwenye historia ya ukaguzi.')){unlockNamedAction(lockKey);return;}try{ensureClient();const {error}=await supabaseClient.rpc('admin_soft_delete_fund_expense',{p_id:Number(id)});if(error)throw error;alert('Matumizi yameondolewa kwenye orodha na historia ya ukaguzi imehifadhiwa.');await loadFinanceDashboard();await loadDashboard();}catch(e){console.error(e);alert('Imeshindikana kufuta matumizi: '+(e?.message||e));}finally{unlockNamedAction(lockKey);}}
 function financeCsvCell(v){return '"'+String(v??'').replaceAll('"','""')+'"';}
 function exportFinanceCSV(){const rows=window.financeExpenses||[];const data=[['Tarehe','Aina','Maelezo','Kiasi','Njia ya malipo'],...rows.map(r=>[r.expense_date,r.category,r.description,r.amount,r.payment_method])];const csv='\ufeff'+data.map(r=>r.map(financeCsvCell).join(',')).join('\n');downloadTextFile(csv,'ripoti-matumizi-'+localDateISO()+'.csv','text/csv;charset=utf-8');}
 function printFinanceReport(){
@@ -3126,7 +3193,7 @@ async function loadReports(){
 
         const [allCr,dd] = await Promise.all([
             fetchAllDashboardRows('contributions','id,family_member_id,first_name,middle_name,last_name,amount,contribution_date,is_deleted,contributor_type',q=>q.eq('is_deleted',false).eq('contributor_type','Mwanafamilia').order('id',{ascending:true})),
-            fetchAllDashboardRows('disaster_contribution_deductions','id,family_member_id,amount,deduction_date,is_deleted',q=>q.eq('is_deleted',false).order('id',{ascending:true}))
+            fetchAllDashboardRows('disaster_contribution_deductions','id,family_member_id,amount,deducted_amount,outstanding_amount,deduction_date,is_deleted',q=>q.eq('is_deleted',false).order('id',{ascending:true}))
         ]);
         if(allCr.error) throw allCr.error;
         if(dd.error) throw dd.error;
@@ -3194,7 +3261,7 @@ async function loadReports(){
         deductionRows.forEach(r=>{
             const id=String(r.family_member_id||'');
             if(!id)return;
-            deductionByMember.set(id,(deductionByMember.get(id)||0)+Math.max(0,Number(r.amount||0)));
+            deductionByMember.set(id,(deductionByMember.get(id)||0)+Math.max(0,Number(r.deducted_amount||0)));
         });
         const ledgerActiveMembers=members.filter(member=>member.is_active!==false);
         const ledgerMembersByName=new Map();
@@ -3659,6 +3726,7 @@ function openContributionModal(){
 }
 
 function openContributionEditModal(row){
+    document.getElementById("contributionDate").min=FAMILY_CONTRIBUTION_START_DATE;
     document.getElementById("contributionEditId").value=row.id;
     document.getElementById("contributionModalTitle").textContent="Hariri Mchango "+(row.receipt_number||"");
     document.getElementById("saveContributionButton").textContent="Hifadhi Mabadiliko";
@@ -3790,6 +3858,12 @@ async function saveContribution(){
 
     if(!fields.contribution_date||!fields.first_name||!fields.last_name){
         alert("Tarehe, jina la kwanza na jina la mwisho vinahitajika.");
+        return;
+    }
+    // Tarehe rasmi ya kuanza kwa michango ya familia ni 1 Septemba 2026.
+    // Kizuizi hiki kinatumika pia wakati wa kuhariri rekodi iliyopo.
+    if(fields.contribution_date < FAMILY_CONTRIBUTION_START_DATE){
+        alert("Michango ya Mo'Nyakorema O'Rila inaanza tarehe 1 Septemba 2026. Tarehe ya mchango haiwezi kuwa kabla ya hapo.");
         return;
     }
 
@@ -4006,6 +4080,8 @@ function findFamilyMemberMatch(user){
 }
 
 function renderUserFamilyMatch(user){
+    const linked=familyMembers.find(m=>String(m.profile_id||'')===String(user.id));
+    if(linked) return `<div class="text-xs"><span class="inline-flex items-center rounded-full bg-green-100 text-green-800 px-2 py-1 font-bold">✓ Imeunganishwa</span><div class="mt-1 text-slate-600">${escapeHtml(fullName(linked))} · #${escapeHtml(String(linked.id))}</div></div>`;
     const result=findFamilyMemberMatch(user);
     if(result.status==="strong") return `<div class="text-xs"><span class="inline-flex items-center rounded-full bg-green-100 text-green-800 px-2 py-1 font-bold">✓ Imelingana</span><div class="mt-1 text-slate-600">${escapeHtml(fullName(result.matches[0].member))} · #${escapeHtml(String(result.matches[0].member.id))}</div></div>`;
     if(result.status==="possible") return `<div class="text-xs"><span class="inline-flex items-center rounded-full bg-amber-100 text-amber-800 px-2 py-1 font-bold">⚠ Inaweza kuendana</span><div class="mt-1 text-slate-600">${escapeHtml(fullName(result.matches[0].member))} · #${escapeHtml(String(result.matches[0].member.id))}</div></div>`;
@@ -4028,7 +4104,7 @@ async function loadUsers(){
     if(error){
         console.error("Users:",error);
         document.getElementById("usersTable").innerHTML=`
-        <tr><td colspan="6" class="p-6 text-center text-red-600">
+        <tr><td colspan="7" class="p-6 text-center text-red-600">
         Imeshindikana kupakia watumiaji: ${escapeHtml(error.message)}
         </td></tr>`;
         return;
@@ -4046,6 +4122,40 @@ function clearUsersFilters(){
     renderUsers();
 }
 
+function renderFamilyProfileLinkControl(user){
+    const linked=familyMembers.find(m=>String(m.profile_id||'')===String(user.id));
+    const options=(familyMembers||[]).map(m=>{
+        const occupied=m.profile_id && String(m.profile_id)!==String(user.id);
+        return `<option value="${escapeHtml(String(m.id))}" ${linked&&String(linked.id)===String(m.id)?'selected':''} ${occupied?'disabled':''}>${escapeHtml(fullName(m))}${occupied?' (Imeunganishwa)':''}</option>`;
+    }).join('');
+    return `<div class="min-w-[190px]"><select aria-label="Unganisha akaunti ya mwanafamilia" onchange="linkUserFamilyMember('${escapeHtml(user.id)}',this.value)" class="border rounded-lg px-2 py-2 bg-white text-xs w-full"><option value="">${linked?'Ondoa muunganisho':'Chagua mwanafamilia'}</option>${options}</select><div class="text-[11px] text-slate-500 mt-1">${linked?'Imeunganishwa na: '+escapeHtml(fullName(linked)):'Haijaunganishwa'}</div></div>`;
+}
+
+async function linkUserFamilyMember(profileId,memberId){
+    if(currentProfile?.role!=="Administrator"){alert("Administrator pekee ndiye anayeruhusiwa kuunganisha akaunti.");return;}
+    const user=users.find(x=>String(x.id)===String(profileId));
+    if(!user||user.role!=="Mwanafamilia"){alert("Akaunti ya Mwanafamilia haikupatikana.");return;}
+    const chosen=memberId?familyMembers.find(m=>String(m.id)===String(memberId)):null;
+    const currentlyLinked=familyMembers.find(m=>String(m.profile_id||'')===String(profileId));
+    // Chaguo tupu kwa akaunti ambayo haijaunganishwa si ombi la kuondoa muunganisho.
+    if(!chosen && !currentlyLinked){renderUsers();return;}
+    const message=chosen?`Una uhakika unataka kuunganisha akaunti ya ${fullName(user)} na mwanafamilia ${fullName(chosen)}?`:`Una uhakika unataka kuondoa muunganisho wa akaunti ya ${fullName(user)}?`;
+    if(!confirm(message)){renderUsers();return;}
+    try{
+        const targetMember=chosen||currentlyLinked;
+        if(!targetMember) throw new Error('Chagua mwanafamilia kabla ya kuendelea.');
+        const {error}=await supabaseClient.rpc('admin_link_family_member_profile',{p_family_member_id:Number(targetMember.id),p_profile_id:chosen?profileId:null});
+        if(error) throw error;
+        await loadFamilyMembers();
+        renderUsers();
+        alert(chosen?'Akaunti imeunganishwa kikamilifu.':'Muunganisho umeondolewa.');
+    }catch(error){
+        console.error('Family profile link:',error);
+        alert('Imeshindikana kuunganisha akaunti: '+(error?.message||'Hitilafu isiyojulikana.'));
+        renderUsers();
+    }
+}
+
 function renderUsers(){
     const table=document.getElementById("usersTable");
     if(!table) return;
@@ -4059,6 +4169,16 @@ function renderUsers(){
     document.getElementById("usersActiveCount")?.replaceChildren(document.createTextNode(String(activeCount)));
     document.getElementById("usersInactiveCount")?.replaceChildren(document.createTextNode(String(inactiveCount)));
     document.getElementById("usersAdminCount")?.replaceChildren(document.createTextNode(String(adminCount)));
+    const activeFamilyUsers=users.filter(u=>u.role==="Mwanafamilia"&&u.is_active===true);
+    const linkedProfileIds=new Set((familyMembers||[]).map(m=>String(m.profile_id||"")).filter(Boolean));
+    const unlinkedFamilyUsers=activeFamilyUsers.filter(u=>!linkedProfileIds.has(String(u.id)));
+    const linkWarning=document.getElementById("usersFamilyLinkWarning");
+    if(linkWarning){
+        linkWarning.classList.toggle("hidden",unlinkedFamilyUsers.length===0);
+        linkWarning.textContent=unlinkedFamilyUsers.length
+          ? `Tahadhari ya faragha: akaunti ${unlinkedFamilyUsers.length} za Wanafamilia walio hai hazijaunganishwa na majina yao kwenye orodha ya Wanafamilia. Ziunganishe ili ziweze kuona taarifa zao binafsi.`
+          : "Akaunti zote hai za Wanafamilia zimeunganishwa na rekodi zao.";
+    }
     const filtered=users.filter(user=>{
         const hay=[fullName(user),user.phone,user.role,user.approval_status].filter(Boolean).join(" ").toLowerCase();
         return (!q||hay.includes(q))&&(!roleFilter||user.role===roleFilter);
@@ -4066,7 +4186,7 @@ function renderUsers(){
     const summary=document.getElementById("usersResultSummary");
     if(summary) summary.textContent=`Inaonyesha ${filtered.length} kati ya ${total} watumiaji.`;
     if(!filtered.length){
-        table.innerHTML=`<tr><td colspan="6" class="p-6 text-center text-slate-500">Hakuna watumiaji.</td></tr>`;
+        table.innerHTML=`<tr><td colspan="7" class="p-6 text-center text-slate-500">Hakuna watumiaji.</td></tr>`;
         return;
     }
 
@@ -4096,6 +4216,7 @@ function renderUsers(){
             </span>
           </td>
           <td class="p-3">${renderUserFamilyMatch(user)}</td>
+          <td class="p-3">${user.role==="Mwanafamilia"?renderFamilyProfileLinkControl(user):'<span class="text-xs text-slate-400">Haitumiki</span>'}</td>
           <td class="p-3 text-right">
             ${self?"<span class=\"text-xs text-slate-400\">Akaunti yako</span>":
               `<div class="flex flex-col items-center justify-center gap-2 py-1">
@@ -4175,11 +4296,10 @@ async function setUserApproval(id,status){
         if(!proceed) return;
     }else if(!confirm(`Unataka ${label} usajili wa mwanafamilia huyu?`)) return;
     try{
-        const {error}=await supabaseClient.from("profiles").update({
-            approval_status:status,
-            is_active:status==="approved",
-            updated_at:new Date().toISOString()
-        }).eq("id",id);
+        const {error}=await supabaseClient.rpc("admin_set_user_approval_v153",{
+            target_user_id:id,
+            new_approval_status:status
+        });
         if(error) throw error;
         await loadUsers();
         alert(status==="approved"?"Akaunti imeidhinishwa na sasa iko tayari kutumika.":"Usajili umekataliwa.");
