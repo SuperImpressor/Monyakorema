@@ -1,13 +1,21 @@
 <!DOCTYPE html>
 <html lang="sw">
 <head>
+<!-- V203: Add contribution eligibility groups, live counts and directory filter. -->
+<!-- V202: Compact family directory statistic cards for mobile and desktop. -->
+<!-- V201: Add secure aggregate family statistics above the member directory. -->
+<!-- V200: Move the family directory out of the member dashboard into its own navigation page with search. -->
+<!-- V196: Add member-visible itemized disaster deduction repayment history and show repayments even when no deduction row is returned. -->\n<!-- V195: Fix function scope so role label resolves; restore Administrator nav and centralize header identity. -->
+<!-- V194: Refresh account values on page open; explicitly hide member profile editing; improve mobile value visibility. -->
+<!-- V193: V192 plus correct supabase-js currentPassword verification and password-manager autocomplete hints. -->
+<!-- V192: Mwanafamilia dashboard pagination, month-accurate contribution obligations, assistance history and account contact details. -->
 <!-- V154: legacy disaster approval RPC retired server-side; app continues using decide_disaster_assistance_v149. -->
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mo'Nyakorema O'Rila — Mfumo wa Wanafamilia</title>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.102.0"></script>
 <script src="https://cdn.tailwindcss.com"></script>
 
 <style>
@@ -380,6 +388,7 @@ Jisajili kama Mwanafamilia
     </div>
     <div class="space-y-1">
       <button data-page="dashboard" onclick="showPage('dashboard')" class="nav-button sidebar-link bg-blue-600 text-white"><span>🏠</span><span>Dashboard</span></button>
+      <button id="memberDirectoryNav" data-page="member-directory" onclick="showPage('member-directory')" class="nav-button sidebar-link hidden"><span>👨‍👩‍👧</span><span>Orodha ya Wanafamilia</span></button>
       <button data-page="family" onclick="showPage('family')" class="nav-button sidebar-link"><span>👨‍👩‍👧</span><span>Wanafamilia</span></button>
       <button data-page="contributions" onclick="showPage('contributions')" class="nav-button sidebar-link"><span>💰</span><span>Michango</span></button>
       <button data-page="finance" onclick="showPage('finance')" class="nav-button sidebar-link"><span>💳</span><span>Fedha</span></button>
@@ -400,6 +409,44 @@ Jisajili kama Mwanafamilia
 <main class="app-main max-w-7xl mx-auto p-4">
 
 <section id="page-dashboard" class="page">
+<div id="memberDashboardPanel" class="hidden space-y-5">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div><h2 class="text-2xl font-bold">Muhtasari wangu</h2><p id="memberWelcomeText" class="text-slate-500 text-sm mt-1">Karibu kwenye akaunti yako ya mwanafamilia.</p><p id="memberDashboardUpdated" class="text-xs text-slate-400 mt-1">Inapakia taarifa...</p></div>
+    <button type="button" onclick="loadMemberDashboard()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold">↻ Sasisha taarifa</button>
+  </div>
+  <div id="memberDashboardError" class="hidden rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"></div>
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <div class="bg-white rounded-xl shadow-sm p-4"><p class="text-sm text-slate-500">Jumla ya michango yangu</p><p id="memberTotalContributions" class="text-xl font-bold mt-2">TZS 0</p></div>
+    <div class="bg-white rounded-xl shadow-sm p-4"><p class="text-sm text-slate-500">Deni la michango</p><p id="memberContributionDebt" class="text-xl font-bold mt-2 text-red-700">TZS 0</p></div>
+    <div class="bg-white rounded-xl shadow-sm p-4"><p class="text-sm text-slate-500">Madeni ya makato ya maafa</p><p id="memberDeductionDebt" class="text-xl font-bold mt-2">TZS 0</p></div>
+  </div>
+  <div class="bg-white rounded-xl shadow-sm p-4">
+    <h3 class="font-bold text-lg">Hali ya michango ya kila mwezi</h3><p class="text-sm text-slate-500 mb-3">Malipo yanahesabiwa kuanzia mwezi wako wa kuanza kuchangia; madeni ya zamani yanazingatiwa kwanza.</p>
+    <div id="memberMonthlyDebtList" class="divide-y"><p class="text-sm text-slate-500 py-3">Inapakia...</p></div>
+  </div>
+  <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+    <div class="p-4 border-b space-y-3">
+      <div><h3 class="font-bold text-lg">Historia ya michango yangu</h3><p class="text-sm text-slate-500">Tumia vichujio kuona michango kwa mwezi au mwaka, pamoja na namba za risiti.</p></div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <select id="memberContributionYearFilter" onchange="renderMemberContributionHistory()" class="w-full border rounded-lg px-3 py-2 text-sm bg-white"><option value="">Miaka yote</option></select>
+        <select id="memberContributionMonthFilter" onchange="renderMemberContributionHistory()" class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
+          <option value="">Miezi yote</option><option value="01">Januari</option><option value="02">Februari</option><option value="03">Machi</option><option value="04">Aprili</option><option value="05">Mei</option><option value="06">Juni</option><option value="07">Julai</option><option value="08">Agosti</option><option value="09">Septemba</option><option value="10">Oktoba</option><option value="11">Novemba</option><option value="12">Desemba</option>
+        </select>
+        <button type="button" onclick="resetMemberContributionFilters()" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Ondoa vichujio</button>
+      </div>
+      <p id="memberContributionHistorySummary" class="text-xs text-slate-500" aria-live="polite">Inapakia historia...</p>
+    </div>
+    <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-50"><tr><th class="text-left p-3">Tarehe</th><th class="text-left p-3">Risiti</th><th class="text-left p-3">Njia ya malipo</th><th class="text-right p-3">Kiasi</th><th class="text-center p-3">Risiti</th></tr></thead><tbody id="memberContributionHistory"><tr><td colspan="5" class="p-5 text-center text-slate-500">Inapakia...</td></tr></tbody></table></div>
+  </div>
+  <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+    <div class="p-4 border-b"><h3 class="font-bold text-lg">Makato na marejesho ya maafa</h3><p class="text-sm text-slate-500">Muhtasari wa makato yaliyohusishwa na akaunti yako.</p></div>
+    <div id="memberDeductionHistory" class="p-4 text-sm text-slate-500">Inapakia...</div>
+  </div>
+  <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+    <div class="p-4 border-b"><h3 class="font-bold text-lg">Misaada ya maafa inayokuhusu</h3><p class="text-sm text-slate-500">Hali ya maombi na misaada iliyorekodiwa kwa jina lako.</p></div>
+    <div id="memberAssistanceHistory" class="p-4 text-sm text-slate-500">Inapakia...</div>
+  </div>
+</div>
 <div class="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
 <div>
 <h2 class="text-2xl font-bold">Dashboard</h2>
@@ -497,6 +544,37 @@ Jisajili kama Mwanafamilia
 </div>
 <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-100"><tr><th class="text-left p-3">Tarehe</th><th class="text-left p-3">Aina</th><th class="text-left p-3">Maelezo</th><th class="text-right p-3">Kiasi</th></tr></thead><tbody id="dashboardRecentActivity"><tr><td colspan="4" class="p-6 text-center text-slate-500">Inapakia...</td></tr></tbody></table></div>
 </div>
+</section>
+
+<section id="page-member-directory" class="page hidden">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+    <div><h2 class="text-2xl font-bold">Orodha ya Wanafamilia</h2><p class="text-sm text-slate-500 mt-1">Majina ya wanafamilia walio hai. Taarifa binafsi na za kifedha hazionyeshwi.</p></div>
+    <div class="flex items-center gap-2"><span id="memberDirectoryCount" class="text-sm text-slate-500"></span><button type="button" onclick="loadMemberFamilyDirectory()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold">↻ Sasisha</button></div>
+  </div>
+  <div id="memberDirectoryError" class="hidden rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 mb-3" role="alert"></div>
+  <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-3 mb-4" aria-label="Takwimu za wanafamilia">
+    <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-3 sm:p-3.5 min-w-0"><p class="text-slate-500 text-xs sm:text-sm leading-snug">👥 Jumla</p><p id="memberStatTotal" class="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1">—</p></div>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-3 sm:p-3.5 min-w-0"><p class="text-slate-500 text-xs sm:text-sm leading-snug">👨 Wanaume</p><p id="memberStatMale" class="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1">—</p></div>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-3 sm:p-3.5 min-w-0"><p class="text-slate-500 text-xs sm:text-sm leading-snug">👩 Wanawake</p><p id="memberStatFemale" class="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1">—</p></div>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-3 sm:p-3.5 min-w-0"><p class="text-slate-500 text-xs sm:text-sm leading-snug">💚 Walio Hai</p><p id="memberStatAlive" class="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1">—</p></div>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-3 sm:p-3.5 min-w-0"><p class="text-slate-500 text-xs sm:text-sm leading-snug">📱 Wenye Simu</p><p id="memberStatPhone" class="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1">—</p></div>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-3 sm:p-3.5 min-w-0"><p class="text-slate-500 text-xs sm:text-sm leading-snug">⚪ Hali Haijaainishwa</p><p id="memberStatUnknownLife" class="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1">—</p></div>
+  </div>
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 mb-4" aria-label="Makundi ya uchangiaji">
+    <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-3"><p class="text-xs text-emerald-800">✓ Wanaopaswa kuchangia</p><p id="memberEligibilityEligible" class="text-2xl font-extrabold text-emerald-900 mt-1">—</p></div>
+    <div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><p class="text-xs text-slate-700">○ Wasio na wajibu wa kuchangia</p><p id="memberEligibilityNotEligible" class="text-2xl font-extrabold text-slate-900 mt-1">—</p></div>
+    <div class="rounded-xl border border-amber-100 bg-amber-50 p-3"><p class="text-xs text-amber-800">♡ Waliosamehewa kuchangia</p><p id="memberEligibilityExempt" class="text-2xl font-extrabold text-amber-900 mt-1">—</p></div>
+  </div>
+  <div class="bg-white rounded-xl shadow-sm p-4 sm:p-5">
+    <div class="flex flex-col sm:flex-row gap-3 mb-4">
+      <input id="memberDirectorySearch" type="search" oninput="filterMemberFamilyDirectory()" class="w-full sm:max-w-md border rounded-lg px-3 py-2" placeholder="Tafuta jina la mwanafamilia..." aria-label="Tafuta jina la mwanafamilia">
+      <select id="memberDirectoryEligibilityFilter" onchange="filterMemberFamilyDirectory()" class="w-full sm:max-w-xs border rounded-lg px-3 py-2" aria-label="Chuja kwa kundi la uchangiaji">
+        <option value="">Makundi yote ya uchangiaji</option><option value="legacy_eligible">Wanaopaswa kuchangia</option><option value="not_eligible">Wasio na wajibu wa kuchangia</option><option value="exempt">Waliosamehewa kuchangia</option>
+      </select>
+      <span id="memberDirectoryShown" class="text-xs text-slate-500 self-center"></span>
+    </div>
+    <div id="memberFamilyDirectory" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2" aria-live="polite"><p class="text-sm text-slate-500">Bonyeza menyu kupakia orodha...</p></div>
+  </div>
 </section>
 
 <section id="page-family" class="page hidden">
@@ -926,31 +1004,36 @@ Jisajili kama Mwanafamilia
 <div id="familyLedgerModal" class="hidden fixed inset-0 z-[85] modal-bg items-center justify-center p-3 sm:p-4 overflow-y-auto"><div class="bg-white rounded-2xl shadow-xl w-full max-w-5xl p-4 sm:p-6 max-h-[92vh] overflow-y-auto"><div class="flex justify-between items-start gap-3 mb-4"><div><h3 id="ledgerTitle" class="text-xl font-bold">Historia ya Mwanafamilia</h3><p id="ledgerSummary" class="text-sm text-slate-500 mt-1"></p></div><button onclick="closeFamilyLedger()" class="text-2xl">×</button></div><div id="ledgerKpis" class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5"></div><div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-100"><tr><th class="text-left p-3">Tarehe</th><th class="text-left p-3">Aina</th><th class="text-left p-3">Maelezo</th><th class="text-right p-3">Kiasi</th><th class="text-left p-3">Hali</th></tr></thead><tbody id="ledgerTable"></tbody></table></div></div></div>
 
 <section id="page-account" class="page hidden">
-<div class="max-w-xl">
-<h2 class="text-2xl font-bold mb-5">Akaunti yangu</h2>
+<div class="max-w-2xl">
+<h2 class="text-2xl font-bold mb-2">Akaunti yangu</h2>
+<p class="text-sm text-slate-500 mb-5">Taarifa za kuingia na usalama wa akaunti yako.</p>
+<div id="memberAccountGuide" class="hidden bg-blue-50 border border-blue-100 rounded-xl p-4 mb-4">
+  <div class="font-bold text-blue-900 mb-1">Karibu kwenye akaunti yako ya mwanafamilia</div>
+  <p class="text-sm text-blue-900">Hapa unaweza kuona taarifa zako za akaunti, kupokea taarifa za familia na kubadilisha neno siri. Akaunti hii imekusudiwa kuangalia taarifa; haiwezi kurekodi au kuhariri michango, wanachama au matumizi ya mfuko.</p>
+</div>
 <div class="bg-white rounded-xl shadow p-5">
 <div class="mb-4">
-<label class="text-sm text-slate-500">Barua pepe</label>
-<div id="accountEmail" class="font-semibold mt-1"></div>
+<label class="text-sm text-slate-500">Barua pepe ya kuingia</label>
+<div id="accountEmail" class="font-semibold mt-1 break-all min-h-6 text-slate-900 break-words"></div>
 </div>
 <div class="mb-4">
-<label class="text-sm text-slate-500">Jina</label>
-<div id="accountName" class="font-semibold mt-1"></div>
+<label class="text-sm text-slate-500">Majina yako</label>
+<div id="accountName" class="font-semibold mt-1 min-h-6 text-slate-900 break-words"></div>
 </div>
 <div class="mb-4">
-<label class="text-sm text-slate-500">Role</label>
-<div id="accountRole" class="font-semibold mt-1"></div>
+<label class="text-sm text-slate-500">Namba ya simu</label>
+<div id="accountPhone" class="font-semibold mt-1 min-h-6 text-slate-900 break-words">-</div>
 </div>
+<div class="mb-5">
+<label class="text-sm text-slate-500">Aina ya akaunti / Wadhifa</label>
+<div id="accountRole" class="font-semibold mt-1 min-h-6 text-slate-900 break-words"></div>
+</div>
+<div id="memberAccountReadOnlyNote" class="hidden rounded-lg bg-slate-50 border p-3 text-sm text-slate-600 mb-4">Taarifa za jina na wadhifa huwekwa na uongozi wa mfumo. Ukiona kosa kwenye majina yako, wasiliana na Katibu au Administrator ili lirekebishwe.</div>
 <div class="flex flex-col sm:flex-row gap-3">
-<button type="button" onclick="showEditProfile()"
- class="bg-slate-700 hover:bg-slate-800 text-white px-4 py-3 rounded-lg font-bold">
-Hariri Taarifa
-</button>
-<button id="changeOwnPasswordButton" type="button" onclick="showChangePassword()"
- class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-bold">
-Badili Neno Siri
-</button>
+<button id="accountEditProfileButton" type="button" onclick="showEditProfile()" class="hidden bg-slate-700 hover:bg-slate-800 text-white px-4 py-3 rounded-lg font-bold">Hariri Taarifa</button>
+<button id="changeOwnPasswordButton" type="button" onclick="showChangePassword()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-bold">Badili Neno Siri</button>
 </div>
+<p id="memberPasswordHelp" class="hidden text-xs text-slate-500 mt-3">Kwa usalama, tumia neno siri lenye angalau herufi 8, herufi kubwa na ndogo, namba na alama maalumu.</p>
 </div>
 </div>
 </section>
@@ -1116,12 +1199,12 @@ Hifadhi Mchango
 <input id="adminResetPasswordUserId" type="hidden">
 <label class="block text-sm font-semibold mb-1">Neno siri jipya</label>
 <div class="relative mb-4">
-<input id="adminResetPassword" type="password" minlength="12" class="w-full border rounded-lg px-3 py-3 pr-14" autocomplete="new-password">
+<input id="adminResetPassword" type="password" minlength="8" class="w-full border rounded-lg px-3 py-3 pr-14" autocomplete="new-password">
 <button id="toggleAdminResetPassword" type="button" onclick="togglePasswordVisibility('adminResetPassword','toggleAdminResetPassword')" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1.5 rounded-md text-slate-500 hover:bg-slate-100 text-sm font-semibold" aria-label="Onyesha neno siri" title="Onyesha neno siri">👁</button>
 </div>
 <label class="block text-sm font-semibold mb-1">Thibitisha neno siri</label>
 <div class="relative mb-5">
-<input id="adminResetPasswordConfirm" type="password" minlength="12" class="w-full border rounded-lg px-3 py-3 pr-14" autocomplete="new-password">
+<input id="adminResetPasswordConfirm" type="password" minlength="8" class="w-full border rounded-lg px-3 py-3 pr-14" autocomplete="new-password">
 <button id="toggleAdminResetPasswordConfirm" type="button" onclick="togglePasswordVisibility('adminResetPasswordConfirm','toggleAdminResetPasswordConfirm')" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1.5 rounded-md text-slate-500 hover:bg-slate-100 text-sm font-semibold" aria-label="Onyesha neno siri" title="Onyesha neno siri">👁</button>
 </div>
 <button id="adminResetPasswordButton" type="button" onclick="adminResetUserPassword()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold">Badili Neno Siri</button>
@@ -1159,15 +1242,15 @@ Hifadhi Mchango
 <button id="toggleCurrentPassword" type="button" onclick="togglePasswordVisibility('currentPassword','toggleCurrentPassword')" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1.5 rounded-md text-slate-500 hover:bg-slate-100 text-sm font-semibold" aria-label="Onyesha neno siri" title="Onyesha neno siri">👁</button>
 </div>
 <p class="text-xs text-slate-500 -mt-2 mb-4">Kwa usalama, thibitisha neno siri lako la sasa kabla ya kuweka jipya.</p>
-<p class="text-xs text-slate-500 -mt-2 mb-4">Tumia angalau herufi 12, herufi kubwa, herufi ndogo, namba na alama. Urefu wa juu ni herufi 128.</p>
+<p class="text-xs text-slate-500 -mt-2 mb-4">Tumia angalau herufi 8, herufi kubwa, herufi ndogo, namba na alama. Urefu wa juu ni herufi 128.</p>
 <label class="block text-sm font-semibold mb-1">Neno siri jipya</label>
 <div class="relative mb-4">
-<input id="newPassword" type="password" minlength="12" maxlength="128" autocomplete="new-password" class="w-full border rounded-lg px-3 py-3 pr-14" placeholder="Angalau herufi 12 + A-Z + a-z + 0-9 + alama">
+<input id="newPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password" class="w-full border rounded-lg px-3 py-3 pr-14" placeholder="Angalau herufi 8 + A-Z + a-z + 0-9 + alama">
 <button id="toggleNewPassword" type="button" onclick="togglePasswordVisibility('newPassword','toggleNewPassword')" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1.5 rounded-md text-slate-500 hover:bg-slate-100 text-sm font-semibold" aria-label="Onyesha neno siri" title="Onyesha neno siri">👁</button>
 </div>
 <label class="block text-sm font-semibold mb-1">Rudia neno siri</label>
 <div class="relative mb-5">
-<input id="newPasswordConfirm" type="password" minlength="12" maxlength="128" autocomplete="new-password" class="w-full border rounded-lg px-3 py-3 pr-14" placeholder="Rudia neno siri jipya">
+<input id="newPasswordConfirm" type="password" minlength="8" maxlength="128" autocomplete="new-password" class="w-full border rounded-lg px-3 py-3 pr-14" placeholder="Rudia neno siri jipya">
 <button id="toggleNewPasswordConfirm" type="button" onclick="togglePasswordVisibility('newPasswordConfirm','toggleNewPasswordConfirm')" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1.5 rounded-md text-slate-500 hover:bg-slate-100 text-sm font-semibold" aria-label="Onyesha neno siri" title="Onyesha neno siri">👁</button>
 </div>
 <button type="button" onclick="changePassword()"
@@ -1184,15 +1267,15 @@ Badili Neno Siri
 <button type="button" onclick="closeRecoveryPassword()" class="text-2xl">×</button>
 </div>
 <p class="text-sm text-slate-500 mb-4">Link ya kurejesha akaunti imethibitishwa. Weka neno siri jipya hapa.</p>
-<p class="text-xs text-slate-500 -mt-2 mb-4">Tumia angalau herufi 12, herufi kubwa, herufi ndogo, namba na alama. Urefu wa juu ni herufi 128.</p>
+<p class="text-xs text-slate-500 -mt-2 mb-4">Tumia angalau herufi 8, herufi kubwa, herufi ndogo, namba na alama. Urefu wa juu ni herufi 128.</p>
 <label class="block text-sm font-semibold mb-1">Neno siri jipya</label>
 <div class="relative mb-4">
-<input id="recoveryPassword" type="password" minlength="12" maxlength="128" autocomplete="new-password" class="w-full border rounded-lg px-3 py-3 pr-14" placeholder="Angalau herufi 12 + A-Z + a-z + 0-9 + alama">
+<input id="recoveryPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password" class="w-full border rounded-lg px-3 py-3 pr-14" placeholder="Angalau herufi 8 + A-Z + a-z + 0-9 + alama">
 <button id="toggleRecoveryPassword" type="button" onclick="togglePasswordVisibility('recoveryPassword','toggleRecoveryPassword')" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1.5 rounded-md text-slate-500 hover:bg-slate-100 text-sm font-semibold" aria-label="Onyesha neno siri" title="Onyesha neno siri">👁</button>
 </div>
 <label class="block text-sm font-semibold mb-1">Rudia neno siri</label>
 <div class="relative mb-5">
-<input id="recoveryPasswordConfirm" type="password" minlength="12" maxlength="128" autocomplete="new-password" class="w-full border rounded-lg px-3 py-3 pr-14" placeholder="Rudia neno siri jipya">
+<input id="recoveryPasswordConfirm" type="password" minlength="8" maxlength="128" autocomplete="new-password" class="w-full border rounded-lg px-3 py-3 pr-14" placeholder="Rudia neno siri jipya">
 <button id="toggleRecoveryPasswordConfirm" type="button" onclick="togglePasswordVisibility('recoveryPasswordConfirm','toggleRecoveryPasswordConfirm')" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1.5 rounded-md text-slate-500 hover:bg-slate-100 text-sm font-semibold" aria-label="Onyesha neno siri" title="Onyesha neno siri">👁</button>
 </div>
 <button id="recoveryPasswordButton" type="button" onclick="completePasswordRecovery()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold">
@@ -1217,8 +1300,8 @@ Baada ya kujisajili, utathibitisha barua pepe yako. Akaunti itawekwa <strong>Ina
 <div><label class="block text-sm font-semibold mb-1">Jina la mwisho *</label><input id="signupLastName" required autocomplete="family-name" class="w-full border rounded-lg px-3 py-3"></div>
 <div><label class="block text-sm font-semibold mb-1">Namba ya simu</label><input id="signupPhone" type="tel" autocomplete="tel" class="w-full border rounded-lg px-3 py-3"></div>
 <div><label class="block text-sm font-semibold mb-1">Barua pepe *</label><input id="signupEmail" type="email" required autocomplete="email" class="w-full border rounded-lg px-3 py-3"></div>
-<div><label class="block text-sm font-semibold mb-1">Neno siri *</label><div class="relative"><input id="signupPassword" type="password" required minlength="12" maxlength="128" autocomplete="new-password" class="w-full border rounded-lg px-3 py-3 pr-14" placeholder="Herufi 12+, A-Z, a-z, namba na alama"><button id="toggleSignupPassword" type="button" onclick="togglePasswordVisibility('signupPassword','toggleSignupPassword')" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1.5 rounded-md text-slate-500 hover:bg-slate-100 text-sm font-semibold" aria-label="Onyesha neno siri" title="Onyesha neno siri">👁</button></div></div>
-<div><label class="block text-sm font-semibold mb-1">Rudia neno siri *</label><div class="relative"><input id="signupPasswordConfirm" type="password" required minlength="12" maxlength="128" autocomplete="new-password" class="w-full border rounded-lg px-3 py-3 pr-14"><button id="toggleSignupPasswordConfirm" type="button" onclick="togglePasswordVisibility('signupPasswordConfirm','toggleSignupPasswordConfirm')" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1.5 rounded-md text-slate-500 hover:bg-slate-100 text-sm font-semibold" aria-label="Onyesha neno siri" title="Onyesha neno siri">👁</button></div></div>
+<div><label class="block text-sm font-semibold mb-1">Neno siri *</label><div class="relative"><input id="signupPassword" type="password" required minlength="8" maxlength="128" autocomplete="new-password" class="w-full border rounded-lg px-3 py-3 pr-14" placeholder="Herufi 8+, A-Z, a-z, namba na alama"><button id="toggleSignupPassword" type="button" onclick="togglePasswordVisibility('signupPassword','toggleSignupPassword')" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1.5 rounded-md text-slate-500 hover:bg-slate-100 text-sm font-semibold" aria-label="Onyesha neno siri" title="Onyesha neno siri">👁</button></div></div>
+<div><label class="block text-sm font-semibold mb-1">Rudia neno siri *</label><div class="relative"><input id="signupPasswordConfirm" type="password" required minlength="8" maxlength="128" autocomplete="new-password" class="w-full border rounded-lg px-3 py-3 pr-14"><button id="toggleSignupPasswordConfirm" type="button" onclick="togglePasswordVisibility('signupPasswordConfirm','toggleSignupPasswordConfirm')" class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1.5 rounded-md text-slate-500 hover:bg-slate-100 text-sm font-semibold" aria-label="Onyesha neno siri" title="Onyesha neno siri">👁</button></div></div>
 <button id="familySignupButton" type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold">Jisajili</button>
 </form>
 </div>
@@ -1367,6 +1450,35 @@ function fullName(row){
         .filter(Boolean).join(" ");
 }
 
+function roleDisplayName(role){
+    return ({Administrator:"Msimamizi wa Mfumo",Mwenyekiti:"Mwenyekiti",Katibu:"Katibu",Mhasibu:"Mhasibu",Mwanafamilia:"Mwanafamilia — Kuangalia taarifa za familia"})[role]||role||"-";
+}
+
+// V194: Jaza upya taarifa za akaunti kila ukurasa wa Akaunti yangu unapofunguliwa.
+function renderMyAccountSummary(){
+    if(!currentUser || !currentProfile) return;
+    const emailEl=document.getElementById("accountEmail");
+    const nameEl=document.getElementById("accountName");
+    const phoneEl=document.getElementById("accountPhone");
+    const roleEl=document.getElementById("accountRole");
+    if(emailEl) emailEl.textContent=currentUser.email||"Haijaonyeshwa";
+    if(nameEl) nameEl.textContent=fullName(currentProfile)||"Majina hayajawekwa";
+    if(phoneEl) phoneEl.textContent=currentProfile.phone||"Haijawekwa";
+    if(roleEl) roleEl.textContent=roleDisplayName(currentProfile.role);
+}
+
+function renderHeaderIdentity(){
+    if(!currentUser || !currentProfile) return;
+    const nameEl=document.getElementById("currentUserName");
+    const roleEl=document.getElementById("currentUserRole");
+    if(nameEl) nameEl.textContent=fullName(currentProfile)||currentUser.email||"-";
+    if(roleEl){
+        const label="Wadhifa: "+roleDisplayName(currentProfile.role);
+        roleEl.textContent=label;
+        roleEl.title=label;
+    }
+}
+
 function escapeHtml(value){
     return String(value ?? "")
         .replaceAll("&","&amp;")
@@ -1489,25 +1601,29 @@ async function loadApplication(user){
     document.getElementById("loginPage").classList.add("hidden");
     document.getElementById("app").classList.remove("hidden");
 
-    document.getElementById("currentUserName").textContent=fullName(profile)||user.email||"-";
-    const roleEl=document.getElementById("currentUserRole");
-    if(roleEl){ roleEl.textContent="Wadhifa: "+(profile.role||"-"); roleEl.title="Wadhifa: "+(profile.role||"-"); }
+    renderHeaderIdentity();
     document.getElementById("accountEmail").textContent=user.email||"-";
     document.getElementById("accountName").textContent=fullName(profile)||"-";
-    document.getElementById("accountRole").textContent=profile.role||"-";
+    const accountPhone=document.getElementById("accountPhone"); if(accountPhone) accountPhone.textContent=profile.phone||"Haijawekwa";
+    document.getElementById("accountRole").textContent=roleDisplayName(profile.role);
 
     applyRolePermissions();
     // Baada ya refresh, rudisha mtumiaji kwenye menyu aliyokuwa nayo.
     const savedPage=getSavedAppPage();
     showPage(savedPage);
 
-    await Promise.allSettled([
-        loadContributionTarget(),
-        loadDashboard(),
-        loadFamilyMembers(),
-        loadContributions(),
-        profile.role!=="Mwanafamilia" ? loadNotifications() : Promise.resolve()
-    ]);
+    if(profile.role==="Mwanafamilia"){
+        // Pakia data ya akaunti yake tu. Usipakie orodha ya familia au michango ya jumla.
+        await Promise.allSettled([loadDashboard(),loadNotifications()]);
+    }else{
+        await Promise.allSettled([
+            loadContributionTarget(),
+            loadDashboard(),
+            loadFamilyMembers(),
+            loadContributions(),
+            loadNotifications()
+        ]);
+    }
 
     if(profile.role==="Administrator"){
         await loadUsers();
@@ -1522,14 +1638,18 @@ function applyRolePermissions(){
     const canAddFamily=["Administrator","Katibu"].includes(role);
     const canAddContribution=["Administrator","Mwenyekiti","Mhasibu"].includes(role);
 
-    document.getElementById("adminNav").classList.toggle("hidden",!admin);
-    document.getElementById("settingsNav").classList.toggle("hidden",!admin);
+    const adminNav=document.getElementById("adminNav");
+    if(adminNav) adminNav.classList.toggle("hidden",!admin);
+    const settingsNav=document.getElementById("settingsNav");
+    if(settingsNav) settingsNav.classList.toggle("hidden",!admin);
     const auditNav=document.getElementById("v23AuditNav"); if(auditNav) auditNav.classList.toggle("hidden",!admin);
-    document.getElementById("addFamilyButton").classList.toggle("hidden",!canAddFamily);
-    document.getElementById("addContributionButton").classList.toggle("hidden",!canAddContribution);
+    const addFamilyButton=document.getElementById("addFamilyButton");
+    if(addFamilyButton) addFamilyButton.classList.toggle("hidden",!canAddFamily);
+    const addContributionButton=document.getElementById("addContributionButton");
+    if(addContributionButton) addContributionButton.classList.toggle("hidden",!canAddContribution);
 
     // Mwanafamilia hawezi kuhariri taarifa za akaunti yake kupitia menyu ya "Akaunti yangu".
-    const editProfileNavButton=document.querySelector('#page-account button[onclick="showEditProfile()"]');
+    const editProfileNavButton=document.getElementById("accountEditProfileButton");
     if(editProfileNavButton){
         const canEditOwnProfile=!!role && role!=="Mwanafamilia";
         editProfileNavButton.classList.toggle("hidden",!canEditOwnProfile);
@@ -1538,16 +1658,22 @@ function applyRolePermissions(){
 
     const adb=document.getElementById("addDisasterButton"); if(adb) adb.classList.toggle("hidden",!["Administrator","Mhasibu","Katibu"].includes(role));
 
-    // Mwanafamilia haruhusiwi kubadili neno siri la akaunti yake mwenyewe.
+    // Kila mtumiaji aliyeingia anaweza kubadili neno siri lake mwenyewe.
     const changeOwnPasswordButton=document.getElementById("changeOwnPasswordButton");
     if(changeOwnPasswordButton){
-        const canChangeOwnPassword=!!role && role!=="Mwanafamilia";
+        const canChangeOwnPassword=!!role;
         changeOwnPasswordButton.classList.toggle("hidden",!canChangeOwnPassword);
         changeOwnPasswordButton.disabled=!canChangeOwnPassword;
     }
+    const memberGuide=document.getElementById("memberAccountGuide");
+    if(memberGuide) memberGuide.classList.toggle("hidden",role!=="Mwanafamilia");
+    const memberReadOnlyNote=document.getElementById("memberAccountReadOnlyNote");
+    if(memberReadOnlyNote) memberReadOnlyNote.classList.toggle("hidden",role!=="Mwanafamilia");
+    const memberPasswordHelp=document.getElementById("memberPasswordHelp");
+    if(memberPasswordHelp) memberPasswordHelp.classList.toggle("hidden",role!=="Mwanafamilia");
 
-    // Mwanafamilia hawezi kuona menyu ya Taarifa wala kuifungua kupitia navigation.
-    const canViewNotifications=!!role && role!=="Mwanafamilia";
+    // Kila akaunti inaweza kuona taarifa zake binafsi; RLS huzuia kuona za wengine.
+    const canViewNotifications=!!role;
     const notificationsNav=document.getElementById("notificationsNav");
     if(notificationsNav){
         notificationsNav.classList.toggle("hidden",!canViewNotifications);
@@ -1566,9 +1692,25 @@ function applyRolePermissions(){
         deductionInput.disabled=!canSetDeduction;
         deductionInput.classList.toggle("bg-slate-100",!canSetDeduction);
         deductionInput.classList.toggle("cursor-not-allowed",!canSetDeduction);
-        if(!canSetDeduction){
-            deductionInput.value="0";
-        }
+        if(!canSetDeduction) deductionInput.value="0";
+    }
+
+    // Akaunti ya Mwanafamilia ina menyu chache zilizo wazi na zinazomhusu.
+    const memberOnlyPages=new Set(["dashboard","member-directory","notifications","account"]);
+    document.querySelectorAll("#appSidebar [data-page]").forEach(button=>{
+        const page=button.dataset.page;
+        const allowed=role==="Mwanafamilia" ? memberOnlyPages.has(page) : page!=="member-directory";
+        button.classList.toggle("hidden",!allowed);
+        button.disabled=!allowed;
+    });
+    const searchWrap=document.querySelector(".global-search-wrap");
+    if(searchWrap) searchWrap.classList.toggle("hidden",role==="Mwanafamilia");
+    const mobileSearch=document.querySelector("#appSidebar .sm\\:hidden");
+    if(mobileSearch) mobileSearch.classList.toggle("hidden",role==="Mwanafamilia");
+    const sidebarHeading=document.querySelector("#appSidebar .p-4 > .flex.items-center.justify-between");
+    if(sidebarHeading){
+        const label=sidebarHeading.querySelector("p.text-sm");
+        if(label) label.textContent=role==="Mwanafamilia" ? "Akaunti yangu" : "Usimamizi wa Mfumo";
     }
 }
 
@@ -1757,7 +1899,6 @@ let systemNotifications=[];
 
 function formatDateTimeTZ(v){try{return new Date(v).toLocaleString("sw-TZ")}catch(e){return v||"-";}}
 function toggleNotifications(){
-    if(currentProfile?.role==="Mwanafamilia") return;
     const p=document.getElementById("notificationPanel"); if(!p)return;
     p.classList.toggle("hidden");
     if(!p.classList.contains("hidden")) loadNotifications();
@@ -1785,7 +1926,9 @@ async function openNotification(id){
     if(!n)return;
     if(!n.is_read){await supabaseClient.from('system_notifications').update({is_read:true,read_at:new Date().toISOString()}).eq('id',n.id).eq('recipient_user_id',currentUser.id);n.is_read=true;n.read_at=new Date().toISOString();}
     await loadNotifications();
-    if(n.entity_table==='family_members' && n.entity_id){showPage('family');const m=familyMembers.find(x=>String(x.id)===String(n.entity_id));if(m)openFamilyLedger(m.id);}
+    if(currentProfile?.role==="Mwanafamilia"){
+        showPage("notifications");
+    }else if(n.entity_table==='family_members' && n.entity_id){showPage('family');const m=familyMembers.find(x=>String(x.id)===String(n.entity_id));if(m)openFamilyLedger(m.id);}
     else if(n.entity_table==='contributions'){showPage('contributions');}
     else if(n.entity_table==='fund_expenses'){showPage('finance');}
     else if(n.entity_table==='disaster_assistance'){showPage('disaster');}
@@ -2054,10 +2197,13 @@ function closeSidebar(){
 function showPage(page){
     const admin=currentProfile?.role==="Administrator";
     const familyUser=currentProfile?.role==="Mwanafamilia";
-    if((page==="users" || page==="settings" || page==="v23audit") && !admin){
+    if(familyUser && !["dashboard","member-directory","notifications","account"].includes(page)){
         page="dashboard";
     }
-    if(page==="notifications" && familyUser){
+    if(page==="member-directory" && !familyUser){
+        page="dashboard";
+    }
+    if((page==="users" || page==="settings" || page==="v23audit") && !admin){
         page="dashboard";
     }
     // Hifadhi ukurasa wa mwisho ili refresh isikurudishe Dashboard moja kwa moja.
@@ -2073,6 +2219,14 @@ function showPage(page){
 
     const selected=document.getElementById("page-"+page);
     if(selected) selected.classList.remove("hidden");
+
+    if(page==="account" && currentUser && currentProfile){
+        renderMyAccountSummary();
+        applyRolePermissions();
+    }
+    if(page==="member-directory" && currentUser && currentProfile){
+        loadMemberFamilyDirectory();
+    }
 
     if(page==="family" && currentUser && currentProfile){
         loadFamilyMembers();
@@ -2146,7 +2300,254 @@ function normalizeDashboardMemberName(person){
         .filter(Boolean).join(' ').trim().toLowerCase().replace(/\s+/g,' ');
 }
 
+let memberContributionHistoryRows = [];
+let memberReceiptDisplayName = "Mwanafamilia";
+
+function renderMemberContributionHistory(){
+    const body=document.getElementById("memberContributionHistory");
+    if(!body) return;
+    const year=document.getElementById("memberContributionYearFilter")?.value||"";
+    const month=document.getElementById("memberContributionMonthFilter")?.value||"";
+    const rows=memberContributionHistoryRows.filter(r=>{
+        const date=String(r.contribution_date||"");
+        return (!year||date.slice(0,4)===year)&&(!month||date.slice(5,7)===month);
+    });
+    const total=rows.reduce((sum,r)=>sum+Math.max(0,Number(r.amount||0)),0);
+    const summary=document.getElementById("memberContributionHistorySummary");
+    if(summary) summary.textContent=`Rekodi ${rows.length} kati ya ${memberContributionHistoryRows.length} • Jumla ya kipindi: TZS ${money(total)}`;
+    body.innerHTML=rows.length?rows.map(r=>`<tr class="border-t"><td class="p-3 whitespace-nowrap">${escapeHtml(formatDisplayDate(r.contribution_date))}</td><td class="p-3">${escapeHtml(r.receipt_number||"-")}</td><td class="p-3">${escapeHtml(r.payment_method||"-")}</td><td class="p-3 text-right font-bold whitespace-nowrap">TZS ${money(r.amount)}</td><td class="p-3 text-center"><button type="button" onclick="printMemberContributionReceipt('${String(r.id)}')" class="rounded-lg bg-green-50 px-3 py-2 text-xs font-bold text-green-700 hover:bg-green-100">Fungua / Chapisha</button></td></tr>`).join(""):'<tr><td colspan="5" class="p-5 text-center text-slate-500">Hakuna michango katika kipindi ulichochagua.</td></tr>';
+}
+
+function resetMemberContributionFilters(){
+    const year=document.getElementById("memberContributionYearFilter");
+    const month=document.getElementById("memberContributionMonthFilter");
+    if(year) year.value="";
+    if(month) month.value="";
+    renderMemberContributionHistory();
+}
+
+function setMemberContributionHistory(rows){
+    memberContributionHistoryRows=Array.isArray(rows)?rows:[];
+    const year=document.getElementById("memberContributionYearFilter");
+    if(year){
+        const selected=year.value;
+        const years=[...new Set(memberContributionHistoryRows.map(r=>String(r.contribution_date||"").slice(0,4)).filter(y=>/^\d{4}$/.test(y)))].sort((a,b)=>b.localeCompare(a));
+        year.innerHTML='<option value="">Miaka yote</option>'+years.map(y=>`<option value="${escapeHtml(y)}">${escapeHtml(y)}</option>`).join("");
+        if(years.includes(selected)) year.value=selected;
+    }
+    renderMemberContributionHistory();
+}
+
+function closeMemberReceiptPreview(){
+    document.getElementById("memberReceiptPreview")?.remove();
+    document.getElementById("memberReceiptPrintStyles")?.remove();
+}
+
+function printMemberContributionReceipt(id){
+    // Tumia orodha iliyopakuliwa kwa mwanafamilia huyu pekee; usitafute kwenye
+    // orodha ya michango ya watumiaji wengine.
+    const row=memberContributionHistoryRows.find(x=>String(x.id)===String(id));
+    if(!row){alert("Risiti haikupatikana kwenye historia ya akaunti yako.");return;}
+    closeMemberReceiptPreview();
+    const style=document.createElement("style");
+    style.id="memberReceiptPrintStyles";
+    style.textContent=`#memberReceiptPreview{position:fixed;inset:0;z-index:100001;background:rgba(15,23,42,.72);overflow:auto;padding:18px;display:flex;flex-direction:column;align-items:center;font-family:Arial,sans-serif}#memberReceiptPreview .paper{width:100%;max-width:440px;background:#fff;color:#1f2937;padding:28px;border-radius:14px;box-sizing:border-box}#memberReceiptPreview h2{text-align:center;color:#16834a;margin:0;font-size:24px}#memberReceiptPreview .sub{text-align:center;color:#64748b;font-size:11px;font-weight:bold;margin:7px 0 22px;border-bottom:2px solid #16834a;padding-bottom:15px}#memberReceiptPreview .line{display:flex;justify-content:space-between;gap:14px;padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:14px}#memberReceiptPreview .line span:first-child{color:#64748b}#memberReceiptPreview .line strong{text-align:right;overflow-wrap:anywhere}#memberReceiptPreview .total{display:flex;justify-content:space-between;gap:10px;color:#16834a;font-weight:bold;font-size:18px;padding-top:18px;margin-top:8px;border-top:2px solid #16834a}#memberReceiptPreview .thanks{text-align:center;color:#64748b;font-size:12px;margin-top:26px;line-height:1.5}#memberReceiptPreview .actions{display:flex;gap:10px;width:100%;max-width:440px;margin:12px auto}#memberReceiptPreview button{flex:1;border:0;border-radius:8px;padding:13px;background:#16834a;color:#fff;font-weight:bold}#memberReceiptPreview button.close{background:#475569}@media print{body>*{visibility:hidden!important}#memberReceiptPreview,#memberReceiptPreview *{visibility:visible!important}#memberReceiptPreview{position:absolute!important;inset:0!important;display:block!important;padding:0!important;background:#fff!important;overflow:visible!important}#memberReceiptPreview .paper{max-width:none!important;border-radius:0!important}#memberReceiptPreview .actions{display:none!important}}`;
+    document.head.appendChild(style);
+    const preview=document.createElement("div");
+    preview.id="memberReceiptPreview";
+    preview.setAttribute("role","dialog");preview.setAttribute("aria-modal","true");preview.setAttribute("aria-label","Risiti ya mchango wangu");
+    const line=(label,value)=>`<div class="line"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value||"-")}</strong></div>`;
+    preview.innerHTML=`<div class="paper"><h2>Mo'Nyakorema O'Rila</h2><div class="sub">MFUKO WA MAAFA WA FAMILIA<br>RISITI YA MCHANGO</div>${line("Namba ya risiti",row.receipt_number||"-")}${line("Tarehe",formatDisplayDate(row.contribution_date))}${line("Mchangiaji",memberReceiptDisplayName)}${line("Njia ya malipo",row.payment_method||"-")}<div class="total"><span>JUMLA ILIYOLIPWA</span><strong>TZS ${money(row.amount)}</strong></div><div class="thanks">✓ MCHANGO UMEREKODIWA<br>Asante kwa mchango wako.<br>Risiti hii imetolewa na Mfumo wa Mo'Nyakorema O'Rila.</div></div><div class="actions"><button type="button" onclick="window.print()">Chapisha / Hifadhi PDF</button><button type="button" class="close" onclick="closeMemberReceiptPreview()">Funga</button></div>`;
+    document.body.appendChild(preview);
+    preview.scrollTop=0;
+}
+
+let memberFamilyDirectoryRows=[];
+const memberEligibilityLabels={
+    legacy_eligible:{label:"Anapaswa kuchangia",className:"bg-emerald-100 text-emerald-800"},
+    not_eligible:{label:"Hana wajibu wa kuchangia",className:"bg-slate-200 text-slate-700"},
+    exempt:{label:"Amesamehewa kuchangia",className:"bg-amber-100 text-amber-800"}
+};
+async function loadMemberFamilyDirectory(){
+    ensureClient();
+    const list=document.getElementById("memberFamilyDirectory");
+    const count=document.getElementById("memberDirectoryCount");
+    const error=document.getElementById("memberDirectoryError");
+    if(currentProfile?.role!=="Mwanafamilia"){
+        if(list) list.innerHTML='<p class="text-sm text-slate-500">Sehemu hii inapatikana kwa akaunti za wanafamilia pekee.</p>';
+        return;
+    }
+    if(list) list.innerHTML='<p class="text-sm text-slate-500">Inapakia orodha ya wanafamilia...</p>';
+    if(error){error.classList.add("hidden");error.textContent="";}
+    try{
+        const [directoryResult,statsResult]=await Promise.all([
+            supabaseClient.rpc("member_directory_contribution_groups"),
+            supabaseClient.rpc("get_member_family_directory_stats")
+        ]);
+        if(directoryResult.error) throw directoryResult.error;
+        if(statsResult.error) throw statsResult.error;
+        memberFamilyDirectoryRows=Array.isArray(directoryResult.data)?directoryResult.data:[];
+        if(count) count.textContent=memberFamilyDirectoryRows.length+" wanafamilia";
+        const stats=Array.isArray(statsResult.data)?statsResult.data[0]:null;
+        const statValues={memberStatTotal:stats?.total_members,memberStatMale:stats?.male_members,memberStatFemale:stats?.female_members,memberStatAlive:stats?.alive_members,memberStatPhone:stats?.members_with_phone,memberStatUnknownLife:stats?.unknown_life_status};
+        Object.entries(statValues).forEach(([id,value])=>{const el=document.getElementById(id);if(el)el.textContent=Number.isFinite(Number(value))?Number(value).toLocaleString("en-US"):"0";});
+        const eligible=memberFamilyDirectoryRows.filter(x=>x.contribution_eligibility==="legacy_eligible").length;
+        const notEligible=memberFamilyDirectoryRows.filter(x=>x.contribution_eligibility==="not_eligible").length;
+        const exempt=memberFamilyDirectoryRows.filter(x=>x.contribution_eligibility==="exempt").length;
+        [["memberEligibilityEligible",eligible],["memberEligibilityNotEligible",notEligible],["memberEligibilityExempt",exempt]].forEach(([id,value])=>{const el=document.getElementById(id);if(el)el.textContent=Number(value).toLocaleString("en-US");});
+        filterMemberFamilyDirectory();
+    }catch(err){
+        console.error("Member family directory:",err);
+        if(list) list.innerHTML='<p class="text-sm text-slate-500">Orodha haijapatikana kwa sasa.</p>';
+        if(error){error.textContent="Imeshindikana kupakia orodha. Tafadhali jaribu tena baadaye.";error.classList.remove("hidden");}
+    }
+}
+function filterMemberFamilyDirectory(){
+    const list=document.getElementById("memberFamilyDirectory");
+    const shown=document.getElementById("memberDirectoryShown");
+    if(!list) return;
+    const q=String(document.getElementById("memberDirectorySearch")?.value||"").trim().toLocaleLowerCase();
+    const eligibility=document.getElementById("memberDirectoryEligibilityFilter")?.value||"";
+    const rows=memberFamilyDirectoryRows.filter(person=>{
+        const name=[person.first_name,person.middle_name,person.last_name].filter(Boolean).join(" ").toLocaleLowerCase();
+        return name.includes(q)&&(!eligibility||person.contribution_eligibility===eligibility);
+    });
+    if(shown) shown.textContent="Inaonyesha "+rows.length+" kati ya "+memberFamilyDirectoryRows.length;
+    list.innerHTML=rows.length?rows.map((person,index)=>{
+        const name=[person.first_name,person.middle_name,person.last_name].filter(Boolean).join(" ").trim();
+        const group=memberEligibilityLabels[person.contribution_eligibility]||{label:"Kundi halijaainishwa",className:"bg-slate-100 text-slate-600"};
+        return `<div class="rounded-lg border border-slate-100 bg-slate-50 px-3 py-3 flex items-center gap-3"><span class="w-8 h-8 shrink-0 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold">${index+1}</span><span class="min-w-0 flex-1"><span class="block font-medium text-sm">${escapeHtml(name||"Mwanafamilia")}</span><span class="inline-flex mt-1 rounded-full px-2 py-0.5 text-xs font-semibold ${group.className}">${group.label}</span></span></div>`;
+    }).join(""):'<p class="text-sm text-slate-500">Hakuna mwanafamilia anayelingana na utafutaji au kundi ulilochagua.</p>';
+}
+
+async function loadMemberDashboard(){
+    ensureClient();
+    const panel=document.getElementById("memberDashboardPanel");
+    if(panel) panel.classList.remove("hidden");
+    document.querySelectorAll("#page-dashboard > :not(#memberDashboardPanel)").forEach(el=>el.classList.add("hidden"));
+    const setText=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=String(value);};
+    const setMoney=(id,value)=>setText(id,"TZS "+money(value));
+    const errorBox=document.getElementById("memberDashboardError");
+    if(errorBox){errorBox.classList.add("hidden");errorBox.textContent="";}
+    setText("memberDashboardUpdated","Inapakia taarifa zako binafsi...");
+    setText("memberWelcomeText","Karibu "+(fullName(currentProfile)||"kwenye akaunti yako")+". Hapa unaona taarifa zako binafsi tu.");
+
+    try{
+        const {data:member,error:memberError}=await supabaseClient
+            .from("family_members")
+            .select("id,profile_id,first_name,middle_name,last_name,contribution_eligibility,contribution_start_month,created_at,is_active")
+            .eq("profile_id",currentUser.id).eq("is_active",true).maybeSingle();
+        if(memberError) throw memberError;
+        if(!member){
+            ["memberTotalContributions","memberContributionDebt","memberDeductionDebt"].forEach(id=>setMoney(id,0));
+            setText("memberMonthlyDebtList","Akaunti yako bado haijaunganishwa na kumbukumbu ya mwanafamilia. Tafadhali wasiliana na Katibu au Administrator.");
+            memberContributionHistoryRows=[];
+            setMemberContributionHistory([]);
+            setText("memberDeductionHistory","Hakuna taarifa ya kuonyesha mpaka akaunti iunganishwe.");
+            setText("memberAssistanceHistory","Hakuna taarifa ya kuonyesha mpaka akaunti iunganishwe.");
+            setText("memberDashboardUpdated","Taarifa hazijapatikana.");
+            return;
+        }
+
+        // Pakua historia yote kwa kurasa; Supabase inaweza kurudisha rekodi 1,000 tu kwa ombi moja.
+        // Chagua taarifa chache zinazohitajika tu, hasa kwa akaunti ya Mwanafamilia.
+        const [cr,dd,dp,ar]=await Promise.all([
+            fetchAllDashboardRows("contributions","id,receipt_number,contribution_date,amount,payment_method,family_member_id",q=>q.eq("is_deleted",false).eq("family_member_id",member.id).order("contribution_date",{ascending:false}).order("id",{ascending:false})),
+            fetchAllDashboardRows("disaster_contribution_deductions","id,amount,deducted_amount,outstanding_amount,deduction_date,family_member_id,is_deleted",q=>q.eq("is_deleted",false).eq("family_member_id",member.id).order("deduction_date",{ascending:false}).order("id",{ascending:false})),
+            fetchAllDashboardRows("disaster_contribution_deduction_payments","id,deduction_id,payment_date,amount,family_member_id",q=>q.eq("family_member_id",member.id).order("payment_date",{ascending:false}).order("id",{ascending:false})),
+            fetchAllDashboardRows("disaster_assistance","id,assistance_date,amount,disaster_type,approval_status,payment_status,family_member_id,is_deleted",q=>q.eq("is_deleted",false).eq("family_member_id",member.id).order("assistance_date",{ascending:false}).order("id",{ascending:false}))
+        ]);
+        if(cr.error) throw cr.error;
+        if(dd.error) throw dd.error;
+        if(dp.error) throw dp.error;
+        if(ar.error) console.warn("Member assistance history is unavailable:",ar.error);
+
+        const contributions=cr.data||[], deductions=dd.data||[], repayments=dp.data||[], assistance=ar.error?[]:(ar.data||[]);
+        memberReceiptDisplayName=[member.first_name,member.middle_name,member.last_name].filter(Boolean).join(" ")||"Mwanafamilia";
+        const totalPaid=contributions.reduce((sum,r)=>sum+Math.max(0,Number(r.amount||0)),0);
+        const monthlyObligations=isContributionEligible(member)?getContributionMonths(member):[];
+        // Hali ya deni ifuate kanuni ileile ya Dashboard kuu: michango ilipwe dhidi ya
+        // wajibu wa miezi ya kuchangia tu, kuanzia mwezi wa zamani zaidi.
+        const paidByMonth=new Map();
+        contributions.forEach(r=>{
+            const month=String(r.contribution_date||"").slice(0,7);
+            if(!/^\d{4}-\d{2}$/.test(month)) return;
+            paidByMonth.set(month,(paidByMonth.get(month)||0)+Math.max(0,Number(r.amount||0)));
+        });
+        const eligiblePaid=monthlyObligations.reduce((sum,m)=>sum+Math.max(0,Number(paidByMonth.get(m.key)||0)),0);
+        let remainingPaid=eligiblePaid;
+        const monthlyRows=monthlyObligations.map(m=>{
+            const due=Number(m.due||FAMILY_MONTHLY_CONTRIBUTION);
+            const allocated=Math.min(due,remainingPaid);
+            remainingPaid=Math.max(0,remainingPaid-allocated);
+            return {...m,allocated,debt:Math.max(due-allocated,0)};
+        });
+        const contributionDebt=monthlyRows.reduce((sum,m)=>sum+m.debt,0);
+        const deductionOutstanding=deductions.reduce((sum,d)=>sum+Math.max(0,Number(d.outstanding_amount??(Number(d.amount||0)-Number(d.deducted_amount||0)))),0);
+        const totalRepaid=repayments.reduce((sum,r)=>sum+Math.max(0,Number(r.amount||0)),0);
+
+        setMoney("memberTotalContributions",totalPaid);
+        setMoney("memberContributionDebt",contributionDebt);
+        setMoney("memberDeductionDebt",deductionOutstanding);
+
+        const monthsEl=document.getElementById("memberMonthlyDebtList");
+        if(monthsEl){
+            monthsEl.innerHTML=monthlyRows.length?monthlyRows.slice().reverse().map(m=>{
+                const d=String(m.key||"").split("-");
+                const label=m.label||((d.length===2)?new Intl.DateTimeFormat("sw-TZ",{month:"long",year:"numeric"}).format(new Date(Number(d[0]),Number(d[1])-1,1)):m.key);
+                const paid=Number(m.allocated||0);
+                const debt=Number(m.debt||0);
+                return `<div class="py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1"><div><div class="font-semibold">${escapeHtml(label)}</div><div class="text-xs text-slate-500">Wajibu: TZS ${money(m.due)} • Umelipiwa: TZS ${money(paid)}</div></div><div class="font-bold ${debt>0?'text-red-700':'text-green-700'}">${debt>0?'Deni: TZS '+money(debt):'Umekamilisha'}</div></div>`;
+            }).join(""):'<p class="py-3 text-sm text-slate-500">Hakuna miezi ya mchango inayokuhusu kwa sasa.</p>';
+        }
+        setMemberContributionHistory(contributions);
+        const deductionEl=document.getElementById("memberDeductionHistory");
+        if(deductionEl){
+            deductionEl.innerHTML=(deductions.length||repayments.length)?`
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                <div class="rounded-lg bg-slate-50 p-3"><div class="text-xs text-slate-500">Makato yaliyowekwa</div><b>TZS ${money(deductions.reduce((s,d)=>s+Number(d.amount||0),0))}</b></div>
+                <div class="rounded-lg bg-green-50 p-3"><div class="text-xs text-slate-500">Marejesho yaliyolipwa</div><b>TZS ${money(totalRepaid)}</b></div>
+                <div class="rounded-lg bg-amber-50 p-3"><div class="text-xs text-slate-500">Salio la makato</div><b>TZS ${money(deductionOutstanding)}</b></div>
+              </div>
+              ${deductions.length?`
+                <h4 class="font-semibold mb-2">Muhtasari wa makato</h4>
+                <div class="divide-y mb-5">${deductions.map(d=>`<div class="py-2 flex justify-between gap-3"><span>${escapeHtml(formatDisplayDate(d.deduction_date))}</span><span class="font-semibold">Salio TZS ${money(d.outstanding_amount??(Number(d.amount||0)-Number(d.deducted_amount||0)))}</span></div>`).join("")}</div>
+              `:'<p class="text-sm text-slate-500 mb-4">Hakuna makato yaliyowekwa kwenye akaunti yako.</p>'}
+              <h4 class="font-semibold mb-2">Historia ya marejesho uliyolipa</h4>
+              ${repayments.length?`
+                <div class="overflow-x-auto">
+                  <table class="w-full min-w-[460px] text-sm">
+                    <thead class="bg-slate-50"><tr><th class="text-left p-3">Tarehe ya malipo</th><th class="text-left p-3">Rejea ya deni</th><th class="text-right p-3">Kiasi ulicholipa</th></tr></thead>
+                    <tbody>${repayments.map(r=>`<tr class="border-t"><td class="p-3 whitespace-nowrap">${escapeHtml(formatDisplayDate(r.payment_date))}</td><td class="p-3">#${escapeHtml(r.deduction_id??"-")}</td><td class="p-3 text-right font-semibold whitespace-nowrap">TZS ${money(r.amount)}</td></tr>`).join("")}</tbody>
+                  </table>
+                </div>
+              `:'<p class="text-sm text-slate-500">Bado hujafanya marejesho ya makato ya maafa.</p>'}
+            `:'Hakuna makato au marejesho ya maafa yaliyorekodiwa kwenye akaunti yako.';
+        }
+        const assistanceEl=document.getElementById("memberAssistanceHistory");
+        if(assistanceEl){
+            assistanceEl.innerHTML=ar.error?'<p class="text-slate-500">Taarifa za misaada hazipatikani kwa sasa. Sehemu hii inaweza kuhitaji ruhusa ya ziada ya kusoma kwenye mfumo.</p>':assistance.length?`
+              <div class="overflow-x-auto"><table class="w-full text-sm min-w-[620px]">
+                <thead class="bg-slate-50"><tr><th class="text-left p-3">Tarehe</th><th class="text-left p-3">Aina ya maafa</th><th class="text-right p-3">Kiasi</th><th class="text-left p-3">Hali ya idhini</th><th class="text-left p-3">Hali ya malipo</th></tr></thead>
+                <tbody>${assistance.map(a=>`<tr class="border-t"><td class="p-3 whitespace-nowrap">${escapeHtml(formatDisplayDate(a.assistance_date))}</td><td class="p-3">${escapeHtml(a.disaster_type||"Msaada wa maafa")}</td><td class="p-3 text-right whitespace-nowrap font-semibold">TZS ${money(a.amount)}</td><td class="p-3">${escapeHtml(a.approval_status||"-")}</td><td class="p-3">${escapeHtml(a.payment_status||"-")}</td></tr>`).join("")}</tbody>
+              </table></div>`:'Hakuna ombi au msaada wa maafa uliorekodiwa kwa akaunti yako.';
+        }
+        setText("memberDashboardUpdated","Imesasishwa: "+new Date().toLocaleString("sw-TZ",{dateStyle:"medium",timeStyle:"short"}));
+    }catch(err){
+        console.error("Member dashboard:",err);
+        if(errorBox){errorBox.textContent="Imeshindikana kupakia baadhi ya taarifa zako. Tafadhali jaribu kusasisha au wasiliana na Katibu. Maelezo ya kiufundi yamehifadhiwa kwa ukaguzi.";errorBox.classList.remove("hidden");}
+        setText("memberDashboardUpdated","Taarifa hazijapakiwa kikamilifu.");
+    }
+}
+
 async function loadDashboard(){
+    if(currentProfile?.role==="Mwanafamilia"){
+        await loadMemberDashboard();
+        return;
+    }
+    const memberPanel=document.getElementById("memberDashboardPanel");
+    if(memberPanel) memberPanel.classList.add("hidden");
+    document.querySelectorAll("#page-dashboard > :not(#memberDashboardPanel)").forEach(el=>el.classList.remove("hidden"));
     ensureClient();
     const updated=document.getElementById('dashboardLastUpdated');
     if(updated) updated.textContent='Inapakia taarifa zote...';
@@ -4071,56 +4472,340 @@ function editContribution(id){
 /* =========================================================
    RECEIPT
 ========================================================= */
-function printReceipt(id){
-    const row=contributions.find(x=>String(x.id)===String(id));
+function closeReceiptPreview(){
+    const preview=document.getElementById("monyReceiptPreview");
+    if(preview?._escapeHandler){
+        document.removeEventListener("keydown",preview._escapeHandler);
+    }
+    preview?.remove();
+    document.getElementById("monyReceiptPrintStyles")?.remove();
+}
 
+
+function getReceiptDebtInfo(row){
+    if(!row || row.contributor_type!=="Mwanafamilia" || !row.family_member_id) return null;
+    const status=Array.isArray(familyContributionStatusRows)
+        ? familyContributionStatusRows.find(x=>String(x.member?.id)===String(row.family_member_id))
+        : null;
+    if(!status || !Array.isArray(status.monthRows)) return null;
+    const unpaid=status.monthRows
+        .filter(m=>Number(m.debt||0)>0)
+        .map(m=>({label:m.label,amount:Number(m.debt||0)}));
+    return {
+        total:unpaid.reduce((sum,m)=>sum+m.amount,0),
+        months:unpaid,
+        asOf:getCurrentContributionMonthKey()
+    };
+}
+
+async function shareReceipt(id){
+    const row=contributions.find(x=>String(x.id)===String(id));
     if(!row){
         alert("Risiti haikupatikana.");
         return;
     }
 
+    const button=document.getElementById("monyReceiptShareButton");
+    if(button) button.disabled=true;
+
+    try{
+        // Tengeneza picha ya risiti moja kwa moja kwa Canvas bila maktaba ya nje.
+        const scale=2, width=760, pad=54, contentWidth=width-pad*2;
+        const canvas=document.createElement("canvas");
+        const ctx=canvas.getContext("2d");
+        if(!ctx) throw new Error("Canvas haipatikani kwenye kivinjari hiki.");
+
+        const debtInfo=window.currentReceiptDebtInfo||getReceiptDebtInfo(row);
+        const rows=[
+            ["Namba ya risiti",row.receipt_number||"-"],
+            ["Tarehe",formatDisplayDate(row.contribution_date)],
+            ["Mchangiaji",fullName(row)||"-"],
+            ["Simu",row.phone||"-"],
+            ["Aina ya mchango",row.contributor_type||"-"],
+            ["Njia ya malipo",row.payment_method||"-"],
+            ["Rejea ya muamala",row.transaction_reference||"-"],
+            ["Aliyeratibu",row.receiver?fullName(row.receiver):"-"]
+        ];
+        const debtRows=debtInfo ? debtInfo.months : [];
+        const amount="TZS "+money(row.amount);
+        const lineHeight=34;
+        const debtHeight=debtInfo ? 105+debtRows.length*30 : 0;
+        const height=470+rows.length*lineHeight+debtHeight;
+        canvas.width=width*scale;
+        canvas.height=height*scale;
+        ctx.scale(scale,scale);
+
+        // Mandhari meupe na fremu ya kijani ya risiti.
+        ctx.fillStyle="#f1f5f9";
+        ctx.fillRect(0,0,width,height);
+        ctx.fillStyle="#ffffff";
+        ctx.strokeStyle="#dbe4e8";
+        ctx.lineWidth=2;
+        roundRect(ctx,18,18,width-36,height-36,22,true,true);
+
+        ctx.textAlign="center";
+        ctx.fillStyle="#16834a";
+        ctx.font="bold 30px Arial, sans-serif";
+        ctx.fillText("MO'NYAKOREMA O'RILA",width/2,82);
+        ctx.fillStyle="#64748b";
+        ctx.font="bold 15px Arial, sans-serif";
+        ctx.fillText("MFUKO WA MAAFA • RISITI YA MCHANGO",width/2,112);
+
+        ctx.strokeStyle="#16834a";
+        ctx.lineWidth=3;
+        ctx.beginPath();
+        ctx.moveTo(pad,140);
+        ctx.lineTo(width-pad,140);
+        ctx.stroke();
+
+        ctx.fillStyle="#334155";
+        ctx.font="bold 22px Arial, sans-serif";
+        ctx.fillText("RISITI YA MCHANGO",width/2,180);
+
+        let y=226;
+        ctx.textAlign="left";
+        rows.forEach(([label,value])=>{
+            ctx.fillStyle="#64748b";
+            ctx.font="16px Arial, sans-serif";
+            ctx.fillText(label,width/2- contentWidth/2,y);
+            ctx.fillStyle="#1f2937";
+            ctx.font="bold 16px Arial, sans-serif";
+            const maxWidth=contentWidth*0.56;
+            let text=String(value||"-");
+            while(ctx.measureText(text).width>maxWidth && text.length>4){
+                text=text.slice(0,-2)+"…";
+            }
+            ctx.textAlign="right";
+            ctx.fillText(text,width-pad,y);
+            ctx.textAlign="left";
+            y+=lineHeight;
+        });
+
+        y+=12;
+        ctx.strokeStyle="#16834a";
+        ctx.lineWidth=3;
+        ctx.beginPath();
+        ctx.moveTo(pad,y);
+        ctx.lineTo(width-pad,y);
+        ctx.stroke();
+        y+=48;
+        ctx.fillStyle="#16834a";
+        ctx.font="bold 18px Arial, sans-serif";
+        ctx.textAlign="left";
+        ctx.fillText("JUMLA ILIYOLIPWA",pad,y);
+        ctx.textAlign="right";
+        ctx.font="bold 27px Arial, sans-serif";
+        ctx.fillText(amount,width-pad,y);
+
+        y+=58;
+        if(debtInfo){
+            ctx.fillStyle="#334155";
+            ctx.textAlign="left";
+            ctx.font="bold 17px Arial, sans-serif";
+            ctx.fillText("HALI YA DENI LA MICHANGO",pad,y);
+            y+=30;
+            if(debtRows.length){
+                ctx.fillStyle="#b91c1c";
+                ctx.font="bold 17px Arial, sans-serif";
+                ctx.fillText("Deni unalodaiwa: TZS "+money(debtInfo.total),pad,y);
+                y+=27;
+                ctx.fillStyle="#475569";
+                ctx.font="14px Arial, sans-serif";
+                debtRows.forEach(item=>{
+                    const label=item.label+" — TZS "+money(item.amount);
+                    ctx.fillText(label,pad+8,y);
+                    y+=25;
+                });
+            }else{
+                ctx.fillStyle="#16834a";
+                ctx.font="bold 16px Arial, sans-serif";
+                ctx.fillText("Huna deni la michango.",pad,y);
+                y+=27;
+            }
+            ctx.fillStyle="#64748b";
+            ctx.font="12px Arial, sans-serif";
+            ctx.fillText("Hali ya deni hadi "+debtInfo.asOf,pad,y);
+            y+=25;
+        }
+
+        y+=12;
+        ctx.textAlign="center";
+        ctx.fillStyle="#16834a";
+        ctx.font="bold 17px Arial, sans-serif";
+        ctx.fillText("✓  MCHANGO UMEREKODIWA",width/2,y);
+        y+=38;
+        ctx.fillStyle="#64748b";
+        ctx.font="15px Arial, sans-serif";
+        ctx.fillText("Asante kwa mchango wako.",width/2,y);
+        ctx.fillText("Risiti hii imetolewa na Mfumo wa Mo'Nyakorema O'Rila.",width/2,y+25);
+
+        const blob=await new Promise((resolve,reject)=>{
+            canvas.toBlob(value=>value?resolve(value):reject(new Error("Imeshindikana kutengeneza picha ya risiti.")),"image/png");
+        });
+        const file=new File([blob],"Risiti-MoNyakorema-"+String(row.receipt_number||row.id)+".png",{type:"image/png"});
+        const shareData={
+            title:"Risiti ya mchango - Mo'Nyakorema O'Rila",
+            text:"Risiti ya mchango wa Mo'Nyakorema O'Rila.",
+            files:[file]
+        };
+
+        if(navigator.canShare && navigator.canShare({files:[file]}) && navigator.share){
+            await navigator.share(shareData);
+        }else{
+            // Hifadhi picha ili mtumiaji aweze kuituma kupitia WhatsApp au programu nyingine.
+            const url=URL.createObjectURL(blob);
+            const link=document.createElement("a");
+            link.href=url;
+            link.download=file.name;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(()=>URL.revokeObjectURL(url),30000);
+            alert("Picha ya risiti imepakuliwa. Fungua WhatsApp au programu unayotaka, kisha ambatisha picha hiyo.");
+        }
+    }catch(error){
+        if(error?.name!=="AbortError"){
+            console.error("Share receipt image failed:",error);
+            alert("Imeshindikana kutengeneza au kushiriki picha ya risiti. Jaribu tena.");
+        }
+    }finally{
+        if(button) button.disabled=false;
+    }
+}
+
+function roundRect(ctx,x,y,w,h,r,fill,stroke){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+    if(fill) ctx.fill();
+    if(stroke) ctx.stroke();
+}
+
+async function printReceipt(id){
+    const row=contributions.find(x=>String(x.id)===String(id));
+    if(!row){alert("Risiti haikupatikana.");return;}
+
+    // Sasisha hali ya deni kutoka kwenye hifadhidata kabla ya kuonyesha risiti.
+    if(row.contributor_type==="Mwanafamilia" && row.family_member_id){
+        try{ await loadFamilyContributionStatus(); }
+        catch(error){ console.error("Receipt debt refresh:",error); }
+    }
+    window.currentReceiptDebtInfo=getReceiptDebtInfo(row);
+
+    // Fungua risiti ndani ya ukurasa huu badala ya window.open(),
+    // kwa sababu baadhi ya vivinjari vya simu huzuia madirisha ibukizi.
+    closeReceiptPreview();
+
     const name=fullName(row);
     const receiver=row.receiver?fullName(row.receiver):"-";
-    const receiptWindow=window.open("","_blank","width=700,height=800");
+    const detail=(label,value)=>`<div class="detail"><strong>${escapeHtml(label)}</strong><span>${escapeHtml(value||"-")}</span></div>`;
 
-    if(!receiptWindow){
-        alert("Browser imezuia dirisha la risiti. Ruhusu pop-ups kisha jaribu tena.");
-        return;
-    }
+    const style=document.createElement("style");
+    style.id="monyReceiptPrintStyles";
+    style.textContent=`
+      #monyReceiptPreview{position:fixed;inset:0;z-index:100000;background:rgba(15,23,42,.72);overflow:auto;padding:16px;display:flex;flex-direction:column;align-items:center}
+      #monyReceiptPreview .receipt{width:100%;max-width:430px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:26px 24px;box-shadow:0 8px 26px rgba(15,23,42,.09);color:#1f2937;font-family:Arial,Helvetica,sans-serif;box-sizing:border-box}
+      #monyReceiptPreview *{box-sizing:border-box}
+      #monyReceiptPreview .brand{text-align:center;padding-bottom:18px;border-bottom:2px solid #16834a}
+      #monyReceiptPreview .brand-mark{width:58px;height:58px;margin:0 auto 8px;color:#16834a;display:block}
+      #monyReceiptPreview .brand h1{font-size:25px;line-height:1.2;margin:0;color:#16834a}
+      #monyReceiptPreview .brand p{font-size:11px;letter-spacing:1.1px;color:#64748b;margin:6px 0 0;font-weight:700}
+      #monyReceiptPreview .receipt-title{text-align:center;font-size:15px;font-weight:800;letter-spacing:.6px;margin:18px 0;color:#334155}
+      #monyReceiptPreview .details{padding:0 0 14px;border-bottom:1px solid #dbe3e8}
+      #monyReceiptPreview .detail{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:7px 0;font-size:14px;line-height:1.4}
+      #monyReceiptPreview .detail strong{color:#64748b;font-weight:600;flex:0 0 42%}
+      #monyReceiptPreview .detail span{text-align:right;font-weight:700;overflow-wrap:anywhere;flex:1}
+      #monyReceiptPreview .payment{padding:14px 0 4px}
+      #monyReceiptPreview .total{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:2px solid #16834a;padding-top:16px;margin-top:12px;color:#16834a;font-weight:800}
+      #monyReceiptPreview .total span:first-child{font-size:16px}
+      #monyReceiptPreview .total strong{font-size:27px;text-align:right;white-space:nowrap}
+      #monyReceiptPreview .receipt-debt{margin-top:18px;padding:14px;background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;color:#334155}
+      #monyReceiptPreview .debt-heading{font-size:13px;font-weight:800;letter-spacing:.3px;margin-bottom:9px}
+      #monyReceiptPreview .debt-total{font-size:15px;font-weight:800;color:#b91c1c;margin-bottom:8px}
+      #monyReceiptPreview .debt-months>div{display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:13px;border-top:1px solid #ffedd5}
+      #monyReceiptPreview .debt-months strong{text-align:right;white-space:nowrap}
+      #monyReceiptPreview .debt-clear{font-weight:800;color:#16834a}
+      #monyReceiptPreview .debt-asof{font-size:11px;color:#64748b;margin-top:8px}
+      #monyReceiptPreview .confirm{display:flex;align-items:center;justify-content:center;gap:12px;background:#e4f5e9;color:#137642;border-radius:12px;padding:15px 12px;margin-top:22px;font-weight:800}
+      #monyReceiptPreview .check{width:34px;height:34px;border-radius:50%;background:#16834a;color:#fff;display:grid;place-items:center;font-size:23px;flex:none}
+      #monyReceiptPreview .thanks{text-align:center;color:#64748b;font-size:12px;line-height:1.5;margin:18px 0 0}
+      #monyReceiptPreview .receipt-actions{width:100%;max-width:430px;display:flex;gap:10px;margin:14px auto 20px}
+      #monyReceiptPreview .receipt-actions button{flex:1;border:0;border-radius:9px;padding:13px 10px;background:#16834a;color:white;font-weight:700;font-size:14px}
+      #monyReceiptPreview .receipt-actions .close{background:#475569}
+      @media(max-width:380px){#monyReceiptPreview{padding:8px}#monyReceiptPreview .receipt{padding:20px 16px}#monyReceiptPreview .total strong{font-size:22px}#monyReceiptPreview .detail{font-size:13px}}
+      @media print{
+        body>*{visibility:hidden!important}
+        #monyReceiptPreview,#monyReceiptPreview *{visibility:visible!important}
+        #monyReceiptPreview{position:absolute!important;inset:0!important;display:block!important;overflow:visible!important;padding:0!important;background:#fff!important}
+        #monyReceiptPreview .receipt{max-width:none!important;width:100%!important;border:0!important;border-radius:0!important;box-shadow:none!important;padding:18px!important}
+        #monyReceiptPreview .receipt-actions{display:none!important}
+      }`;
+    document.head.appendChild(style);
 
-    receiptWindow.document.write(`
-<!DOCTYPE html>
-<html lang="sw">
-<head>
-<meta charset="UTF-8">
-<title>Risiti ${escapeHtml(row.receipt_number||"")}</title>
-<style>
-body{font-family:Arial;padding:40px;background:#f5f5f5}
-.receipt{max-width:600px;margin:auto;background:white;border:1px solid #ddd;padding:30px}
-h1{text-align:center}
-.row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee;gap:20px}
-.amount{font-size:25px;font-weight:bold;text-align:center;margin:25px 0}
-@media print{body{background:white}.receipt{border:none}}
-</style>
-</head>
-<body>
-<div class="receipt">
-<h1>Mo'Nyakorema O'Rila</h1>
-<p style="text-align:center">RISITI YA MCHANGO</p>
-<div class="row"><strong>Risiti</strong><span>${escapeHtml(row.receipt_number||"-")}</span></div>
-<div class="row"><strong>Tarehe</strong><span>${escapeHtml(formatDisplayDate(row.contribution_date))}</span></div>
-<div class="row"><strong>Mchangiaji</strong><span>${escapeHtml(name||"-")}</span></div>
-<div class="row"><strong>Simu</strong><span>${escapeHtml(row.phone||"-")}</span></div>
-<div class="row"><strong>Aina</strong><span>${escapeHtml(row.contributor_type||"-")}</span></div>
-<div class="row"><strong>Njia ya malipo</strong><span>${escapeHtml(row.payment_method||"-")}</span></div>
-<div class="row"><strong>Aliyeratibu</strong><span>${escapeHtml(receiver)}</span></div>
-<div class="amount">TZS ${money(row.amount)}</div>
-<p style="text-align:center">Asante kwa mchango wako.</p>
-</div>
-<script>window.onload=function(){window.print();}<\/script>
-</body>
-</html>`);
-    receiptWindow.document.close();
+    const preview=document.createElement("div");
+    preview.id="monyReceiptPreview";
+    preview.setAttribute("role","dialog");
+    preview.setAttribute("aria-modal","true");
+    preview.setAttribute("aria-label","Risiti ya mchango");
+    preview.innerHTML=`
+      <div class="receipt">
+        <header class="brand">
+          <svg class="brand-mark" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Nembo ya familia">
+            <path d="M9 25h46v32H9V25Z" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round"/>
+            <path d="M5 25 11 8h42l6 17c-1 6-10 7-13 1-3 7-12 7-15 0-3 7-12 7-15 0-3 6-10 6-11-1Z" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round"/>
+            <path d="M20 57V38h12v19M40 37h8v8h-8z" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round"/>
+          </svg>
+          <h1>Mo'Nyakorema O'Rila</h1>
+          <p>MFUKO WA MAAFA WA FAMILIA</p>
+        </header>
+        <div class="receipt-title">RISITI YA MCHANGO</div>
+        <section class="details">
+          ${detail("Namba ya risiti",row.receipt_number||"-")}
+          ${detail("Tarehe",formatDisplayDate(row.contribution_date))}
+          ${detail("Mchangiaji",name||"-")}
+          ${detail("Simu",row.phone||"-")}
+          ${detail("Aina ya mchango",row.contributor_type||"-")}
+        </section>
+        <section class="payment">
+          ${detail("Njia ya malipo",row.payment_method||"-")}
+          ${detail("Rejea ya muamala",row.transaction_reference||"-")}
+          ${detail("Aliyeratibu",receiver)}
+        </section>
+        <div class="total"><span>JUMLA ILIYOLIPWA</span><strong>TZS ${money(row.amount)}</strong></div>
+        ${window.currentReceiptDebtInfo?`
+          <section class="receipt-debt">
+            <div class="debt-heading">HALI YA DENI LA MICHANGO</div>
+            ${window.currentReceiptDebtInfo.months.length?`
+              <div class="debt-total">Deni unalodaiwa: TZS ${money(window.currentReceiptDebtInfo.total)}</div>
+              <div class="debt-months">${window.currentReceiptDebtInfo.months.map(m=>`<div><span>${escapeHtml(m.label)}</span><strong>TZS ${money(m.amount)}</strong></div>`).join("")}</div>
+            `:`<div class="debt-clear">Huna deni la michango.</div>`}
+            <div class="debt-asof">Hali ya deni hadi ${escapeHtml(window.currentReceiptDebtInfo.asOf)}</div>
+          </section>
+        `:""}
+        <div class="confirm"><span class="check">✓</span><span>MCHANGO UMEREKODIWA</span></div>
+        <p class="thanks">Asante kwa mchango wako.<br>Risiti hii imetolewa na Mfumo wa Mo'Nyakorema O'Rila.</p>
+      </div>
+      <div class="receipt-actions">
+        <button type="button" id="monyReceiptPrintButton" onclick="window.print()">Chapisha / Hifadhi PDF</button>
+        <button type="button" id="monyReceiptShareButton" onclick="shareReceipt('${String(row.id).replace("'", "\\'")}')">Share</button>
+        <button type="button" class="close" onclick="closeReceiptPreview()" aria-label="Funga risiti">Funga</button>
+      </div>`;
+    document.body.appendChild(preview);
+    preview.scrollTop=0;
+
+    // Ruhusu kufunga mwonekano wa risiti kwa kitufe cha Escape.
+    preview._escapeHandler=(event)=>{
+        if(event.key==="Escape"){
+            event.preventDefault();
+            closeReceiptPreview();
+        }
+    };
+    document.addEventListener("keydown",preview._escapeHandler);
+    document.getElementById("monyReceiptPrintButton")?.focus();
 }
 
 
@@ -4591,6 +5276,10 @@ function closeEditProfile(){
 
 async function saveMyProfile(){
     ensureClient();
+    if(currentProfile?.role==="Mwanafamilia"){
+        alert("Taarifa za jina na simu za Mwanafamilia hubadilishwa na Katibu au Administrator.");
+        return;
+    }
     if(!currentUser || !currentProfile){
         alert("Ingia kwanza kwenye akaunti yako.");
         return;
@@ -4618,7 +5307,8 @@ async function saveMyProfile(){
             currentProfile=profile;
             document.getElementById("currentUserName").textContent=fullName(profile)||currentUser.email||"-";
             document.getElementById("accountName").textContent=fullName(profile)||"-";
-            document.getElementById("accountRole").textContent=profile.role||"-";
+            const accountPhone=document.getElementById("accountPhone"); if(accountPhone) accountPhone.textContent=profile.phone||"Haijawekwa";
+            document.getElementById("accountRole").textContent=roleDisplayName(profile.role);
         }
         closeEditProfile();
         alert("Taarifa zako zimehifadhiwa kikamilifu.");
@@ -4632,7 +5322,7 @@ async function saveMyProfile(){
 
 function validateStrongPassword(password){
     if(typeof password!=="string" || password.length>128) return "Neno siri haliwezi kuzidi herufi 128.";
-    if(typeof password!=="string" || password.length<12) return "Neno siri lazima liwe na angalau herufi 12.";
+    if(typeof password!=="string" || password.length<8) return "Neno siri lazima liwe na angalau herufi 8.";
     if(!/[A-Z]/.test(password)) return "Neno siri lazima liwe na angalau herufi moja kubwa (A-Z).";
     if(!/[a-z]/.test(password)) return "Neno siri lazima liwe na angalau herufi moja ndogo (a-z).";
     if(!/[0-9]/.test(password)) return "Neno siri lazima liwe na angalau namba moja (0-9).";
@@ -4641,10 +5331,7 @@ function validateStrongPassword(password){
 }
 
 function showChangePassword(){
-    if(currentProfile?.role==="Mwanafamilia"){
-        alert("Akaunti ya Mwanafamilia hairuhusiwi kubadili neno siri. Tafadhali wasiliana na Administrator.");
-        return;
-    }
+    if(!currentUser || !currentProfile){alert("Ingia kwanza kwenye akaunti yako.");return;}
     const modal=document.getElementById("passwordModal");
     if(!modal) return;
     document.getElementById("currentPassword").value="";
@@ -4663,11 +5350,7 @@ function closePasswordModal(){
 }
 
 async function changePassword(){
-    if(currentProfile?.role==="Mwanafamilia"){
-        alert("Akaunti ya Mwanafamilia hairuhusiwi kubadili neno siri. Tafadhali wasiliana na Administrator.");
-        closePasswordModal();
-        return;
-    }
+    if(!currentUser || !currentProfile){alert("Ingia kwanza kwenye akaunti yako.");closePasswordModal();return;}
     ensureClient();
     if(!currentUser){
         alert("Ingia kwanza kwenye akaunti yako.");
@@ -4707,11 +5390,11 @@ async function changePassword(){
         const email=currentUser.email || (await supabaseClient.auth.getUser()).data?.user?.email;
         if(!email) throw new Error("Email ya akaunti haijapatikana.");
 
-        // Supabase Auth supports current_password on updateUser for password verification.
+        // supabase-js v2.102.0+ accepts currentPassword (camelCase) to verify the old password.
         // The current password is sent only to Supabase Auth and is never logged or stored.
         const {error}=await supabaseClient.auth.updateUser({
             password,
-            current_password:currentPassword
+            currentPassword
         });
 
         if(error){
@@ -4984,11 +5667,11 @@ async function validateCurrentSession(force=false){
         currentUser=user;
         currentProfile=profile;
         lastSessionValidationAt=now;
-        const nameEl=document.getElementById("currentUserName"); if(nameEl) nameEl.textContent=fullName(profile)||user.email||"-";
-        const roleEl=document.getElementById("currentUserRole"); if(roleEl){roleEl.textContent="Wadhifa: "+(profile.role||"-");roleEl.title="Wadhifa: "+(profile.role||"-");}
+        renderHeaderIdentity();
         const accountEmail=document.getElementById("accountEmail"); if(accountEmail) accountEmail.textContent=user.email||"-";
         const accountName=document.getElementById("accountName"); if(accountName) accountName.textContent=fullName(profile)||"-";
-        const accountRole=document.getElementById("accountRole"); if(accountRole) accountRole.textContent=profile.role||"-";
+        const accountPhone=document.getElementById("accountPhone"); if(accountPhone) accountPhone.textContent=profile.phone||"Haijawekwa";
+        const accountRole=document.getElementById("accountRole"); if(accountRole) accountRole.textContent=roleDisplayName(profile.role);
         applyRolePermissions();
         return true;
     }catch(error){
