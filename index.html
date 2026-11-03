@@ -1,6 +1,16 @@
 <!DOCTYPE html>
+<!-- V223: Handle cross-tab SIGNED_IN even when this tab has no currentUser; avoid duplicate local-login loads. -->
+<!-- V222: Synchronize cross-tab Supabase auth changes; clear stale account state on remote sign-out. -->
+<!-- V221: Comprehensive account-scoped state and visible identity cleanup on account switch. -->
+<!-- V220: Application loading is serialized and guarded against stale account responses. -->
+<!-- V219: Account-scoped in-memory state isolation. -->
 <html lang="sw">
 <head>
+<!-- V225: Risiti za Mwanafamilia na viongozi zinaonyesha deni lililothibitishwa; makato ya maafa na michango vinaonyeshwa tofauti. -->
+// V218: Force validation is serialized after any in-flight non-forced check.
+<!-- V217: Revalidate Supabase session and reload data when a page is restored from Back/Forward Cache. -->
+<!-- V216: Serialize overlapping session validation requests. -->
+<!-- V215: V214 plus secure session termination that reloads the app after logout or invalid profile/session detection, clearing stale sensitive DOM data. Supabase backend functions and database are not changed by this HTML file. -->
 <!-- V203: Add contribution eligibility groups, live counts and directory filter. -->
 <!-- V202: Compact family directory statistic cards for mobile and desktop. -->
 <!-- V201: Add secure aggregate family statistics above the member directory. -->
@@ -246,6 +256,9 @@ body{font-family:Arial,sans-serif}
   }
 }
 </style>
+
+<!-- V216: Session validation single-flight protection. Concurrent validation
+     requests now await the same result instead of being treated as valid. -->
 </head>
 
 <body class="min-h-screen bg-slate-100 text-slate-800">
@@ -1196,6 +1209,9 @@ Hifadhi Mchango
 <button type="button" onclick="closeAdminResetPasswordModal()" class="text-2xl">×</button>
 </div>
 <p id="adminResetPasswordUser" class="text-sm text-slate-500 mb-4"></p>
+<div class="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" role="note">
+<strong>Angalizo la usalama:</strong> Kubadili neno siri hakumaanishi kila access token iliyokwisha kutolewa inafutika papo hapo. Baada ya kubadili, mjulishe mtumiaji atoke kwenye akaunti kwenye vifaa vyake vyote na aingie tena. Ruhusa za data lazima ziendelee kuthibitishwa upande wa seva.
+</div>
 <input id="adminResetPasswordUserId" type="hidden">
 <label class="block text-sm font-semibold mb-1">Neno siri jipya</label>
 <div class="relative mb-4">
@@ -1349,6 +1365,7 @@ function getCurrentContributionMonthKey(){
     return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
 }
 let familyContributionStatusRows = [];
+let familyContributionStatusLoadedAt = null;
 let sessionValidationInProgress = false;
 let lastSessionValidationAt = 0;
 let sessionValidationTimer = null;
@@ -1525,6 +1542,9 @@ function toggleLoginPasswordVisibility(){
 /* =========================================================
    LOGIN
 ========================================================= */
+// V223: Tofautisha login iliyoanzishwa kwenye tab hii na SIGNED_IN iliyosawazishwa kutoka tab nyingine.
+let localLoginInProgress=false;
+let crossTabSignInSequence=0;
 document.getElementById("loginForm").addEventListener("submit",async function(e){
     e.preventDefault();
 
@@ -1534,6 +1554,7 @@ document.getElementById("loginForm").addEventListener("submit",async function(e)
 
     button.disabled=true;
     button.textContent="Inaingia...";
+    localLoginInProgress=true;
 
     try{
         ensureClient();
@@ -1554,6 +1575,7 @@ document.getElementById("loginForm").addEventListener("submit",async function(e)
             : "Imeshindikana kuingia: "+message,
             "error");
     }finally{
+        localLoginInProgress=false;
         button.disabled=false;
         button.textContent="INGIA";
     }
@@ -1562,74 +1584,150 @@ document.getElementById("loginForm").addEventListener("submit",async function(e)
 /* =========================================================
    LOAD APPLICATION
 ========================================================= */
-async function loadApplication(user){
-    ensureClient();
+// V219: Safisha hali ya akaunti iliyotangulia kabla ya kuanzisha akaunti tofauti.
+// Hii huzuia arrays za kumbukumbu za mtumiaji mmoja kubaki wakati wa account switch.
+function resetAccountScopedStateForUser(nextUser){
+    const previousUserId=currentUser?.id || null;
+    const nextUserId=nextUser?.id || null;
+    if(!nextUserId || previousUserId===nextUserId) return;
 
-    currentUser=user;
+    // V221: Ficha maudhui na safisha state zote zinazoweza kubeba taarifa
+    // za akaunti iliyotangulia kabla profile mpya haijathibitishwa.
+    document.getElementById("app")?.classList.add("hidden");
+    currentProfile=null;
+    familyMembers=[];
+    contributions=[];
+    users=[];
+    familyContributionStatusRows=[];
+    familyContributionStatusLoadedAt=null;
+    document.getElementById("monyReceiptPreview")?.remove();
+    document.getElementById("monyReceiptPrintStyles")?.remove();
+    document.getElementById("memberReceiptPreview")?.remove();
+    document.getElementById("memberReceiptPrintStyles")?.remove();
+    systemNotifications=[];
+    disasterAssistance=[];
+    memberContributionHistoryRows=[];
+    memberCurrentContributionDebt=null;
+    memberCurrentDeductionDebt=null;
+    memberDebtSnapshotAt=null;
+    memberFamilyDirectoryRows=[];
+    v23AuditRows=[];
+    v23HistoryRows=[];
+    contributionTarget=0;
+    memberReceiptDisplayName="";
+    selectedRestoreBackup=null;
+    lastSessionValidationAt=0;
 
-    const {data:profile,error}=await supabaseClient
-        .from("profiles")
-        .select("id,first_name,middle_name,last_name,phone,role,is_active,approval_status")
-        .eq("id",user.id)
-        .single();
-
-    if(error){
-        await supabaseClient.auth.signOut();
-        throw new Error("Profile ya akaunti haijapatikana: "+error.message);
+    // Safisha utambulisho unaoonekana ili hata DOM ya zamani isibaki na jina/email.
+    const identityFields={
+        accountEmail:"-",
+        accountName:"-",
+        accountPhone:"Haijawekwa",
+        accountRole:"-"
+    };
+    for(const [id,value] of Object.entries(identityFields)){
+        const element=document.getElementById(id);
+        if(element) element.textContent=value;
     }
 
-    if(!ALLOWED_ROLES.includes(profile.role)){
-        await supabaseClient.auth.signOut();
-        throw new Error("Role ya akaunti haijatambuliwa.");
+    // Ondoa ukurasa uliohifadhiwa wa akaunti nyingine; mtumiaji mpya aanze dashboard.
+    try{ localStorage.removeItem(APP_PAGE_STORAGE_KEY); }
+    catch(error){ console.warn("Haikuweza kusafisha ukurasa wa akaunti iliyopita:",error); }
+}
+
+// V220: Zuia majibu ya load ya akaunti ya zamani yasichanganyike na akaunti mpya.
+let applicationLoadSequence=0;
+let applicationLoadQueue=Promise.resolve();
+
+function loadApplication(user){
+    const sequence=++applicationLoadSequence;
+    const requestedUserId=user?.id||null;
+    // Ficha data iliyopo mara moja wakati utambulisho unabadilika.
+    if(currentUser?.id && requestedUserId && currentUser.id!==requestedUserId){
+        document.getElementById("app")?.classList.add("hidden");
+        document.getElementById("loginPage")?.classList.remove("hidden");
     }
 
-    if(profile.approval_status==="pending"){
-        await supabaseClient.auth.signOut();
-        throw new Error("Akaunti yako bado inasubiri idhini ya Administrator. Thibitisha email yako kwanza, kisha subiri idhini.");
-    }
-    if(profile.approval_status==="rejected"){
-        await supabaseClient.auth.signOut();
-        throw new Error("Usajili wa akaunti yako haujaidhinishwa. Tafadhali wasiliana na Administrator.");
-    }
-    if(!profile.is_active){
-        await supabaseClient.auth.signOut();
-        throw new Error("Akaunti yako imelemazwa na Administrator.");
-    }
+    const run=async()=>{
+        ensureClient();
+        if(sequence!==applicationLoadSequence) return false;
+        resetAccountScopedStateForUser(user);
+        currentUser=user;
+        document.getElementById("app")?.classList.add("hidden");
+        document.getElementById("loginPage")?.classList.remove("hidden");
 
-    currentProfile=profile;
+        const {data:profile,error}=await supabaseClient
+            .from("profiles")
+            .select("id,first_name,middle_name,last_name,phone,role,is_active,approval_status")
+            .eq("id",user.id)
+            .single();
 
-    document.getElementById("loginPage").classList.add("hidden");
-    document.getElementById("app").classList.remove("hidden");
+        // Jibu la request iliyopitwa na akaunti mpya haliruhusiwi kubadili UI.
+        if(sequence!==applicationLoadSequence || currentUser?.id!==requestedUserId) return false;
+        if(error || !profile){
+            await supabaseClient.auth.signOut();
+            throw new Error("Profile ya akaunti haijapatikana: "+(error?.message||"Hakuna profile."));
+        }
 
-    renderHeaderIdentity();
-    document.getElementById("accountEmail").textContent=user.email||"-";
-    document.getElementById("accountName").textContent=fullName(profile)||"-";
-    const accountPhone=document.getElementById("accountPhone"); if(accountPhone) accountPhone.textContent=profile.phone||"Haijawekwa";
-    document.getElementById("accountRole").textContent=roleDisplayName(profile.role);
+        if(!ALLOWED_ROLES.includes(profile.role)){
+            await supabaseClient.auth.signOut();
+            throw new Error("Role ya akaunti haijatambuliwa.");
+        }
+        if(profile.approval_status==="pending"){
+            await supabaseClient.auth.signOut();
+            throw new Error("Akaunti yako bado inasubiri idhini ya Administrator. Thibitisha email yako kwanza, kisha subiri idhini.");
+        }
+        if(profile.approval_status==="rejected"){
+            await supabaseClient.auth.signOut();
+            throw new Error("Usajili wa akaunti yako haujaidhinishwa. Tafadhali wasiliana na Administrator.");
+        }
+        if(!profile.is_active){
+            await supabaseClient.auth.signOut();
+            throw new Error("Akaunti yako imelemazwa na Administrator.");
+        }
 
-    applyRolePermissions();
-    // Baada ya refresh, rudisha mtumiaji kwenye menyu aliyokuwa nayo.
-    const savedPage=getSavedAppPage();
-    showPage(savedPage);
+        currentProfile=profile;
+        renderHeaderIdentity();
+        const accountEmail=document.getElementById("accountEmail"); if(accountEmail) accountEmail.textContent=user.email||"-";
+        const accountName=document.getElementById("accountName"); if(accountName) accountName.textContent=fullName(profile)||"-";
+        const accountPhone=document.getElementById("accountPhone"); if(accountPhone) accountPhone.textContent=profile.phone||"Haijawekwa";
+        const accountRole=document.getElementById("accountRole"); if(accountRole) accountRole.textContent=roleDisplayName(profile.role);
 
-    if(profile.role==="Mwanafamilia"){
-        // Pakia data ya akaunti yake tu. Usipakie orodha ya familia au michango ya jumla.
-        await Promise.allSettled([loadDashboard(),loadNotifications()]);
-    }else{
-        await Promise.allSettled([
-            loadContributionTarget(),
-            loadDashboard(),
-            loadFamilyMembers(),
-            loadContributions(),
-            loadNotifications()
-        ]);
-    }
+        applyRolePermissions();
+        const savedPage=getSavedAppPage();
+        showPage(savedPage);
 
-    if(profile.role==="Administrator"){
-        await loadUsers();
-    }
-    lastSessionValidationAt=Date.now();
-    startSessionSecurityMonitor();
+        if(profile.role==="Mwanafamilia"){
+            await Promise.allSettled([loadDashboard(),loadNotifications()]);
+        }else{
+            await Promise.allSettled([
+                loadContributionTarget(),
+                loadDashboard(),
+                loadFamilyMembers(),
+                loadContributions(),
+                loadNotifications()
+            ]);
+        }
+        if(sequence!==applicationLoadSequence || currentUser?.id!==requestedUserId) return false;
+
+        if(profile.role==="Administrator") await loadUsers();
+        if(sequence!==applicationLoadSequence || currentUser?.id!==requestedUserId) return false;
+
+        lastSessionValidationAt=Date.now();
+        startSessionSecurityMonitor();
+        document.getElementById("loginPage")?.classList.add("hidden");
+        document.getElementById("app")?.classList.remove("hidden");
+        return true;
+    };
+
+    // Mzigo wa akaunti unaendeshwa kwa mfuatano; reset ya akaunti mpya hufuata
+    // baada ya maombi ya awali kumaliza, bila kuonyesha dashboard ya zamani.
+    const queued=applicationLoadQueue.catch(()=>false).then(run);
+    applicationLoadQueue=queued.catch(error=>{
+        console.error("Application load queue error:",error);
+        return false;
+    });
+    return queued;
 }
 
 function applyRolePermissions(){
@@ -2302,6 +2400,10 @@ function normalizeDashboardMemberName(person){
 
 let memberContributionHistoryRows = [];
 let memberReceiptDisplayName = "Mwanafamilia";
+// V224: Muhtasari wa deni la sasa la akaunti hii pekee; si deni la tarehe ya malipo ya risiti.
+let memberCurrentContributionDebt = null;
+let memberCurrentDeductionDebt = null;
+let memberDebtSnapshotAt = null;
 
 function renderMemberContributionHistory(){
     const body=document.getElementById("memberContributionHistory");
@@ -2343,11 +2445,34 @@ function closeMemberReceiptPreview(){
     document.getElementById("memberReceiptPrintStyles")?.remove();
 }
 
-function printMemberContributionReceipt(id){
-    // Tumia orodha iliyopakuliwa kwa mwanafamilia huyu pekee; usitafute kwenye
-    // orodha ya michango ya watumiaji wengine.
+async function printMemberContributionReceipt(id){
+    // Risiti ya mwanafamilia itumie snapshot mpya ya akaunti iliyothibitishwa.
+    if(currentProfile?.role!=="Mwanafamilia" || !currentUser?.id){
+        alert("Risiti hii inapatikana kupitia akaunti ya Mwanafamilia husika.");
+        return;
+    }
+    const receiptOwnerId=currentUser.id;
+    const existingRow=memberContributionHistoryRows.find(x=>String(x.id)===String(id));
+    if(!existingRow){alert("Risiti haikupatikana kwenye historia ya akaunti yako.");return;}
+    memberCurrentContributionDebt=null;
+    memberCurrentDeductionDebt=null;
+    memberDebtSnapshotAt=null;
+    try{
+        await loadMemberDashboard();
+    }catch(error){
+        console.error("Member receipt debt refresh:",error);
+    }
+    if(currentUser?.id!==receiptOwnerId || currentProfile?.role!=="Mwanafamilia"){
+        alert("Akaunti imebadilika wakati wa kuthibitisha risiti. Fungua upya akaunti yako kisha ujaribu tena.");
+        return;
+    }
+    if(!memberDebtSnapshotAt || memberCurrentContributionDebt===null || memberCurrentDeductionDebt===null){
+        alert("Imeshindikana kuthibitisha deni lako kutoka kwenye hifadhidata. Risiti haijaonyeshwa ili kuepuka kutoa kiasi cha deni kisicho sahihi. Jaribu tena.");
+        return;
+    }
+    // Tafuta tena risiti baada ya refresh; historia bado imefungwa kwa akaunti hii.
     const row=memberContributionHistoryRows.find(x=>String(x.id)===String(id));
-    if(!row){alert("Risiti haikupatikana kwenye historia ya akaunti yako.");return;}
+    if(!row){alert("Risiti haipatikani tena kwenye historia ya akaunti yako.");return;}
     closeMemberReceiptPreview();
     const style=document.createElement("style");
     style.id="memberReceiptPrintStyles";
@@ -2357,7 +2482,11 @@ function printMemberContributionReceipt(id){
     preview.id="memberReceiptPreview";
     preview.setAttribute("role","dialog");preview.setAttribute("aria-modal","true");preview.setAttribute("aria-label","Risiti ya mchango wangu");
     const line=(label,value)=>`<div class="line"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value||"-")}</strong></div>`;
-    preview.innerHTML=`<div class="paper"><h2>Mo'Nyakorema O'Rila</h2><div class="sub">MFUKO WA MAAFA WA FAMILIA<br>RISITI YA MCHANGO</div>${line("Namba ya risiti",row.receipt_number||"-")}${line("Tarehe",formatDisplayDate(row.contribution_date))}${line("Mchangiaji",memberReceiptDisplayName)}${line("Njia ya malipo",row.payment_method||"-")}<div class="total"><span>JUMLA ILIYOLIPWA</span><strong>TZS ${money(row.amount)}</strong></div><div class="thanks">✓ MCHANGO UMEREKODIWA<br>Asante kwa mchango wako.<br>Risiti hii imetolewa na Mfumo wa Mo'Nyakorema O'Rila.</div></div><div class="actions"><button type="button" onclick="window.print()">Chapisha / Hifadhi PDF</button><button type="button" class="close" onclick="closeMemberReceiptPreview()">Funga</button></div>`;
+    const contributionDebt=Math.max(0,Number(memberCurrentContributionDebt||0));
+    const deductionDebt=Math.max(0,Number(memberCurrentDeductionDebt||0));
+    const totalDebt=contributionDebt+deductionDebt;
+    const debtSnapshotLabel=memberDebtSnapshotAt?memberDebtSnapshotAt.toLocaleString("sw-TZ"):"Haijathibitishwa";
+    preview.innerHTML=`<div class="paper"><h2>Mo'Nyakorema O'Rila</h2><div class="sub">MFUKO WA MAAFA WA FAMILIA<br>RISITI YA MCHANGO</div>${line("Namba ya risiti",row.receipt_number||"-")}${line("Tarehe ya malipo",formatDisplayDate(row.contribution_date))}${line("Mchangiaji",memberReceiptDisplayName)}${line("Njia ya malipo",row.payment_method||"-")}<div class="total"><span>JUMLA ILIYOLIPWA</span><strong>TZS ${money(row.amount)}</strong></div><div style="margin-top:20px;padding:14px;border:1px solid #fecaca;border-radius:10px;background:#fff7f7"><div style="font-weight:800;color:#991b1b;margin-bottom:8px">HALI YA DENI LA SASA</div>${line("Deni la michango", "TZS "+money(contributionDebt))}${line("Deni la makato ya maafa", "TZS "+money(deductionDebt))}<div style="display:flex;justify-content:space-between;gap:10px;padding-top:12px;margin-top:8px;border-top:2px solid #fecaca;font-weight:800;color:#991b1b"><span>JUMLA YA DENI</span><strong>TZS ${money(totalDebt)}</strong></div><div style="font-size:10px;color:#7f1d1d;margin-top:9px">Hali hii imehesabiwa kutokana na taarifa zilizopakiwa mwisho: ${escapeHtml(debtSnapshotLabel)}. Inaonyesha deni la sasa, si lazima deni lililokuwepo tarehe ya malipo ya risiti.</div></div><div class="thanks">✓ MALIPO YAMEREKODIWA<br>Asante kwa mchango wako.<br>Risiti hii imetolewa na Mfumo wa Mo'Nyakorema O'Rila.</div></div><div class="actions"><button type="button" onclick="window.print()">Chapisha / Hifadhi PDF</button><button type="button" class="close" onclick="closeMemberReceiptPreview()">Funga</button></div>`;
     document.body.appendChild(preview);
     preview.scrollTop=0;
 }
@@ -2422,6 +2551,9 @@ function filterMemberFamilyDirectory(){
 
 async function loadMemberDashboard(){
     ensureClient();
+    memberCurrentContributionDebt=null;
+    memberCurrentDeductionDebt=null;
+    memberDebtSnapshotAt=null;
     const panel=document.getElementById("memberDashboardPanel");
     if(panel) panel.classList.remove("hidden");
     document.querySelectorAll("#page-dashboard > :not(#memberDashboardPanel)").forEach(el=>el.classList.add("hidden"));
@@ -2442,6 +2574,8 @@ async function loadMemberDashboard(){
             ["memberTotalContributions","memberContributionDebt","memberDeductionDebt"].forEach(id=>setMoney(id,0));
             setText("memberMonthlyDebtList","Akaunti yako bado haijaunganishwa na kumbukumbu ya mwanafamilia. Tafadhali wasiliana na Katibu au Administrator.");
             memberContributionHistoryRows=[];
+            memberCurrentContributionDebt=null; memberCurrentDeductionDebt=null; memberDebtSnapshotAt=null;
+            memberReceiptDisplayName="Mwanafamilia";
             setMemberContributionHistory([]);
             setText("memberDeductionHistory","Hakuna taarifa ya kuonyesha mpaka akaunti iunganishwe.");
             setText("memberAssistanceHistory","Hakuna taarifa ya kuonyesha mpaka akaunti iunganishwe.");
@@ -2484,6 +2618,10 @@ async function loadMemberDashboard(){
         });
         const contributionDebt=monthlyRows.reduce((sum,m)=>sum+m.debt,0);
         const deductionOutstanding=deductions.reduce((sum,d)=>sum+Math.max(0,Number(d.outstanding_amount??(Number(d.amount||0)-Number(d.deducted_amount||0)))),0);
+        // Hifadhi snapshot inayotokana na rekodi za mwanafamilia aliyeunganishwa na akaunti hii tu.
+        memberCurrentContributionDebt=contributionDebt;
+        memberCurrentDeductionDebt=deductionOutstanding;
+        memberDebtSnapshotAt=new Date();
         const totalRepaid=repayments.reduce((sum,r)=>sum+Math.max(0,Number(r.amount||0)),0);
 
         setMoney("memberTotalContributions",totalPaid);
@@ -2534,6 +2672,9 @@ async function loadMemberDashboard(){
         }
         setText("memberDashboardUpdated","Imesasishwa: "+new Date().toLocaleString("sw-TZ",{dateStyle:"medium",timeStyle:"short"}));
     }catch(err){
+        memberCurrentContributionDebt=null;
+        memberCurrentDeductionDebt=null;
+        memberDebtSnapshotAt=null;
         console.error("Member dashboard:",err);
         if(errorBox){errorBox.textContent="Imeshindikana kupakia baadhi ya taarifa zako. Tafadhali jaribu kusasisha au wasiliana na Katibu. Maelezo ya kiufundi yamehifadhiwa kwa ukaguzi.";errorBox.classList.remove("hidden");}
         setText("memberDashboardUpdated","Taarifa hazijapakiwa kikamilifu.");
@@ -2891,8 +3032,11 @@ function normalizeMemberNameForStatus(member){
 
 async function loadFamilyContributionStatus(){
     const table=document.getElementById('familyContributionStatusTable');
-    if(!table)return;
-    if(!familyMembers.length){table.innerHTML='<tr><td colspan="8" class="p-6 text-center text-slate-500">Hakuna wanafamilia.</td></tr>';return;}
+    // Futa snapshot ya zamani kabla ya kujaribu kupata taarifa mpya.
+    familyContributionStatusRows=[];
+    familyContributionStatusLoadedAt=null;
+    if(!table)return false;
+    if(!familyMembers.length){table.innerHTML='<tr><td colspan="8" class="p-6 text-center text-slate-500">Hakuna wanafamilia.</td></tr>';return false;}
     table.innerHTML='<tr><td colspan="8" class="p-6 text-center text-slate-500">Inapakia hali ya michango...</td></tr>';
     const [contributionResult,deductionResult]=await Promise.all([
         fetchAllDashboardRows('contributions','id,family_member_id,first_name,middle_name,last_name,amount,contribution_date,is_deleted,contributor_type',q=>q.eq('is_deleted',false).eq('contributor_type','Mwanafamilia').order('id',{ascending:true})),
@@ -2904,7 +3048,7 @@ async function loadFamilyContributionStatus(){
         const err=error||deductionError;
         console.error('Family contribution status:',error,deductionError);
         table.innerHTML=`<tr><td colspan="8" class="p-6 text-center text-red-600">Imeshindikana kupakia hali ya michango: ${escapeHtml(err?.message||'Hitilafu isiyojulikana.')}</td></tr>`;
-        return;
+        return false;
     }
 
     const deductedByMember=new Map();
@@ -2963,6 +3107,8 @@ async function loadFamilyContributionStatus(){
         return {member,eligible:isContributionEligible(member),months:months.length,due,total:totalPaid,deducted,deductionDebt:Math.max(0,Number(deductionDebtByMember.get(String(member.id))||0)),availableBalance,debt,excess,monthRows};
     });
     renderFamilyContributionStatus();
+    familyContributionStatusLoadedAt=new Date();
+    return true;
 }
 
 function openFamilyContributionStatus(){
@@ -4487,14 +4633,18 @@ function getReceiptDebtInfo(row){
     const status=Array.isArray(familyContributionStatusRows)
         ? familyContributionStatusRows.find(x=>String(x.member?.id)===String(row.family_member_id))
         : null;
-    if(!status || !Array.isArray(status.monthRows)) return null;
+    if(!status || !Array.isArray(status.monthRows) || !familyContributionStatusLoadedAt) return null;
     const unpaid=status.monthRows
         .filter(m=>Number(m.debt||0)>0)
         .map(m=>({label:m.label,amount:Number(m.debt||0)}));
+    const contributionTotal=unpaid.reduce((sum,m)=>sum+m.amount,0);
+    const deductionTotal=Math.max(0,Number(status.deductionDebt||0));
     return {
-        total:unpaid.reduce((sum,m)=>sum+m.amount,0),
+        contributionTotal,
+        deductionTotal,
+        total:contributionTotal+deductionTotal,
         months:unpaid,
-        asOf:getCurrentContributionMonthKey()
+        asOf:familyContributionStatusLoadedAt.toLocaleString("sw-TZ")
     };
 }
 
@@ -4529,7 +4679,7 @@ async function shareReceipt(id){
         const debtRows=debtInfo ? debtInfo.months : [];
         const amount="TZS "+money(row.amount);
         const lineHeight=34;
-        const debtHeight=debtInfo ? 105+debtRows.length*30 : 0;
+        const debtHeight=debtInfo ? 205+debtRows.length*30 : 0;
         const height=470+rows.length*lineHeight+debtHeight;
         canvas.width=width*scale;
         canvas.height=height*scale;
@@ -4602,13 +4752,18 @@ async function shareReceipt(id){
             ctx.fillStyle="#334155";
             ctx.textAlign="left";
             ctx.font="bold 17px Arial, sans-serif";
-            ctx.fillText("HALI YA DENI LA MICHANGO",pad,y);
+            ctx.fillText("HALI YA DENI LA SASA",pad,y);
+            y+=30;
+            ctx.fillStyle="#b91c1c";
+            ctx.font="bold 15px Arial, sans-serif";
+            ctx.fillText("Deni la michango: TZS "+money(debtInfo.contributionTotal),pad,y);
+            y+=25;
+            ctx.fillText("Deni la makato ya maafa: TZS "+money(debtInfo.deductionTotal),pad,y);
+            y+=27;
+            ctx.font="bold 17px Arial, sans-serif";
+            ctx.fillText("JUMLA YA DENI: TZS "+money(debtInfo.total),pad,y);
             y+=30;
             if(debtRows.length){
-                ctx.fillStyle="#b91c1c";
-                ctx.font="bold 17px Arial, sans-serif";
-                ctx.fillText("Deni unalodaiwa: TZS "+money(debtInfo.total),pad,y);
-                y+=27;
                 ctx.fillStyle="#475569";
                 ctx.font="14px Arial, sans-serif";
                 debtRows.forEach(item=>{
@@ -4616,15 +4771,15 @@ async function shareReceipt(id){
                     ctx.fillText(label,pad+8,y);
                     y+=25;
                 });
-            }else{
+            }else if(debtInfo.contributionTotal===0 && debtInfo.deductionTotal===0){
                 ctx.fillStyle="#16834a";
-                ctx.font="bold 16px Arial, sans-serif";
-                ctx.fillText("Huna deni la michango.",pad,y);
-                y+=27;
+                ctx.font="bold 15px Arial, sans-serif";
+                ctx.fillText("Huna deni la michango wala makato ya maafa.",pad,y);
+                y+=25;
             }
             ctx.fillStyle="#64748b";
             ctx.font="12px Arial, sans-serif";
-            ctx.fillText("Hali ya deni hadi "+debtInfo.asOf,pad,y);
+            ctx.fillText("Hali ya deni ilikaguliwa: "+debtInfo.asOf,pad,y);
             y+=25;
         }
 
@@ -4689,10 +4844,19 @@ async function printReceipt(id){
     const row=contributions.find(x=>String(x.id)===String(id));
     if(!row){alert("Risiti haikupatikana.");return;}
 
-    // Sasisha hali ya deni kutoka kwenye hifadhidata kabla ya kuonyesha risiti.
-    if(row.contributor_type==="Mwanafamilia" && row.family_member_id){
-        try{ await loadFamilyContributionStatus(); }
+    // Sasisha deni kutoka hifadhidata kabla ya kutoa risiti ya Mwanafamilia.
+    if(row.contributor_type==="Mwanafamilia"){
+        if(!row.family_member_id){
+            alert("Risiti hii haiwezi kuonyesha deni kwa sababu rekodi ya mchango haijaunganishwa na mwanafamilia maalumu. Rekebisha muunganisho wa rekodi kwanza.");
+            return;
+        }
+        let debtRefreshOK=false;
+        try{ debtRefreshOK=await loadFamilyContributionStatus(); }
         catch(error){ console.error("Receipt debt refresh:",error); }
+        if(!debtRefreshOK || !getReceiptDebtInfo(row)){
+            alert("Imeshindikana kuthibitisha deni la mwanafamilia kutoka hifadhidata. Risiti haijaonyeshwa ili kuepuka taarifa ya deni isiyo sahihi. Jaribu kusasisha taarifa kisha ujaribu tena.");
+            return;
+        }
     }
     window.currentReceiptDebtInfo=getReceiptDebtInfo(row);
 
@@ -4765,7 +4929,7 @@ async function printReceipt(id){
         <div class="receipt-title">RISITI YA MCHANGO</div>
         <section class="details">
           ${detail("Namba ya risiti",row.receipt_number||"-")}
-          ${detail("Tarehe",formatDisplayDate(row.contribution_date))}
+          ${detail("Tarehe ya malipo",formatDisplayDate(row.contribution_date))}
           ${detail("Mchangiaji",name||"-")}
           ${detail("Simu",row.phone||"-")}
           ${detail("Aina ya mchango",row.contributor_type||"-")}
@@ -4778,12 +4942,14 @@ async function printReceipt(id){
         <div class="total"><span>JUMLA ILIYOLIPWA</span><strong>TZS ${money(row.amount)}</strong></div>
         ${window.currentReceiptDebtInfo?`
           <section class="receipt-debt">
-            <div class="debt-heading">HALI YA DENI LA MICHANGO</div>
+            <div class="debt-heading">HALI YA DENI LA SASA</div>
+            <div class="debt-total">Deni la michango: TZS ${money(window.currentReceiptDebtInfo.contributionTotal)}</div>
+            <div class="debt-total">Deni la makato ya maafa: TZS ${money(window.currentReceiptDebtInfo.deductionTotal)}</div>
+            <div class="debt-total">JUMLA YA DENI: TZS ${money(window.currentReceiptDebtInfo.total)}</div>
             ${window.currentReceiptDebtInfo.months.length?`
-              <div class="debt-total">Deni unalodaiwa: TZS ${money(window.currentReceiptDebtInfo.total)}</div>
               <div class="debt-months">${window.currentReceiptDebtInfo.months.map(m=>`<div><span>${escapeHtml(m.label)}</span><strong>TZS ${money(m.amount)}</strong></div>`).join("")}</div>
-            `:`<div class="debt-clear">Huna deni la michango.</div>`}
-            <div class="debt-asof">Hali ya deni hadi ${escapeHtml(window.currentReceiptDebtInfo.asOf)}</div>
+            `:window.currentReceiptDebtInfo.total===0?`<div class="debt-clear">Huna deni la michango wala makato ya maafa.</div>`:""}
+            <div class="debt-asof">Hali ya deni ilikaguliwa: ${escapeHtml(window.currentReceiptDebtInfo.asOf)}</div>
           </section>
         `:""}
         <div class="confirm"><span class="check">✓</span><span>MCHANGO UMEREKODIWA</span></div>
@@ -5099,7 +5265,7 @@ async function adminResetUserPassword(){
       if(error) throw error;
       if(data?.error) throw new Error(data.error);
       closeAdminResetPasswordModal();
-      alert(data?.message||"Password imebadilishwa kikamilifu.");
+      alert((data?.message||"Neno siri limebadilishwa kikamilifu.")+"\n\nKwa usalama, mjulishe mtumiaji atoke kwenye akaunti kwenye vifaa vyake vyote na aingie tena. Access token ya zamani inaweza kubaki halali hadi muda wake wa kuisha.");
     }catch(error){
       console.error("admin-reset-user-password:",error);
       alert("Imeshindikana kubadilisha password: "+(error?.message||"Kosa lisilojulikana."));
@@ -5216,7 +5382,7 @@ async function deleteUser(id){
             return;
         }
 
-        alert(data?.message||"Mtumiaji amefutwa kikamilifu.");
+        alert((data?.message||"Mtumiaji amefutwa kikamilifu.")+"\n\nKumbuka: access token iliyokwishatolewa inaweza kubaki halali hadi muda wake wa kuisha; ruhusa za data lazima zizuiwe pia na ukaguzi wa profile/RLS upande wa seva.");
         await loadUsers();
     }catch(error){
         console.error("deleteUser:",error);
@@ -5610,59 +5776,105 @@ async function logout(){
     }
     currentUser=null;
     currentProfile=null;
+    contributionTarget=0;
+    lastSessionValidationAt=0;
+    if(sessionValidationTimer){clearInterval(sessionValidationTimer);sessionValidationTimer=null;}
     try{ localStorage.removeItem(APP_PAGE_STORAGE_KEY); }catch(error){}
-    document.getElementById("app").classList.add("hidden");
-    document.getElementById("loginPage").classList.remove("hidden");
-    document.getElementById("loginPassword").value="";
+    // Reload huondoa pia taarifa zilizokuwa zimechorwa kwenye DOM na arrays za session iliyopita.
+    window.location.reload();
 }
 
 /* =========================================================
    AUTH SESSION CHECK
 ========================================================= */
+async function terminateInvalidSession(message){
+    // Usibaki na dashboard ya zamani ikiwa session/profile imefutwa, imezimwa au si halali.
+    alert(message);
+    currentUser=null;
+    currentProfile=null;
+    contributionTarget=0;
+    lastSessionValidationAt=0;
+    if(sessionValidationTimer){clearInterval(sessionValidationTimer);sessionValidationTimer=null;}
+    try{ localStorage.removeItem(APP_PAGE_STORAGE_KEY); }catch(_storageError){}
+    try{ await supabaseClient?.auth.signOut(); }catch(signOutError){console.warn("Session sign-out warning:",signOutError);}
+    // Reload husafisha taarifa nyeti zilizokuwa kwenye DOM, memory na jedwali zilizopakiwa.
+    window.location.reload();
+    return false;
+}
+
+// V218: uthibitishaji wa lazima (force=true) hauwezi kurithi matokeo ya
+// ukaguzi wa kawaida uliokuwa unaendelea. Lazima ufuatwe na ukaguzi mpya wa server.
+let sessionValidationPromise=null;
+let sessionValidationPromiseForce=false;
 async function validateCurrentSession(force=false){
-    if(!supabaseClient || sessionValidationInProgress) return true;
+    if(!supabaseClient) return false;
+
+    if(sessionValidationPromise){
+        if(!force || sessionValidationPromiseForce){
+            return await sessionValidationPromise;
+        }
+
+        // Kuna ukaguzi wa kawaida unaendelea; subiri ukamilike kisha fanya
+        // uthibitishaji mpya wa lazima dhidi ya Supabase.
+        const previousPromise=sessionValidationPromise;
+        const forcedPromise=previousPromise
+            .catch(()=>false)
+            .then(()=>validateCurrentSessionInternal(true));
+        sessionValidationPromise=forcedPromise;
+        sessionValidationPromiseForce=true;
+        try{
+            return await forcedPromise;
+        }finally{
+            if(sessionValidationPromise===forcedPromise){
+                sessionValidationPromise=null;
+                sessionValidationPromiseForce=false;
+            }
+        }
+    }
+
+    const validationPromise=Promise.resolve().then(()=>validateCurrentSessionInternal(force));
+    sessionValidationPromise=validationPromise;
+    sessionValidationPromiseForce=!!force;
+    try{
+        return await validationPromise;
+    }finally{
+        if(sessionValidationPromise===validationPromise){
+            sessionValidationPromise=null;
+            sessionValidationPromiseForce=false;
+        }
+    }
+}
+
+async function validateCurrentSessionInternal(force=false){
+    if(!supabaseClient) return false;
     const now=Date.now();
     if(!force && now-lastSessionValidationAt < SESSION_VALIDATION_INTERVAL) return true;
     sessionValidationInProgress=true;
     try{
         const {data,error}=await supabaseClient.auth.getUser();
         if(error || !data?.user){
-            await supabaseClient.auth.signOut();
-            showMessage("Session yako imekwisha au si halali. Tafadhali ingia tena.","error");
-            return false;
+            return await terminateInvalidSession("Session yako imekwisha au si halali. Tafadhali ingia tena.");
         }
         const user=data.user;
         const {data:profile,error:profileError}=await supabaseClient.from("profiles").select("id,first_name,middle_name,last_name,phone,role,is_active,approval_status").eq("id",user.id).single();
         if(profileError){
             console.error("Session profile validation error:",profileError);
-            await supabaseClient.auth.signOut();
-            showMessage("Imeshindikana kuthibitisha akaunti yako. Tafadhali ingia tena.","error");
-            return false;
+            return await terminateInvalidSession("Imeshindikana kuthibitisha akaunti yako. Tafadhali ingia tena.");
         }
         if(!profile){
-            await supabaseClient.auth.signOut();
-            showMessage("Profile ya akaunti haijapatikana. Tafadhali wasiliana na Administrator.","error");
-            return false;
+            return await terminateInvalidSession("Profile ya akaunti haijapatikana. Tafadhali wasiliana na Administrator.");
         }
         if(profile.approval_status==="pending"){
-            await supabaseClient.auth.signOut();
-            showMessage("Akaunti yako bado inasubiri idhini ya Administrator. Thibitisha email yako kwanza, kisha subiri idhini.","error");
-            return false;
+            return await terminateInvalidSession("Akaunti yako bado inasubiri idhini ya Administrator. Thibitisha email yako kwanza, kisha subiri idhini.");
         }
         if(profile.approval_status==="rejected"){
-            await supabaseClient.auth.signOut();
-            showMessage("Usajili wa akaunti yako haujaidhinishwa. Tafadhali wasiliana na Administrator.","error");
-            return false;
+            return await terminateInvalidSession("Usajili wa akaunti yako haujaidhinishwa. Tafadhali wasiliana na Administrator.");
         }
         if(!profile.is_active){
-            await supabaseClient.auth.signOut();
-            showMessage("Akaunti yako imelemazwa na Administrator.","error");
-            return false;
+            return await terminateInvalidSession("Akaunti yako imelemazwa na Administrator.");
         }
         if(!ALLOWED_ROLES.includes(profile.role)){
-            await supabaseClient.auth.signOut();
-            showMessage("Role ya akaunti haijatambuliwa. Tafadhali wasiliana na Administrator.","error");
-            return false;
+            return await terminateInvalidSession("Role ya akaunti haijatambuliwa. Tafadhali wasiliana na Administrator.");
         }
         currentUser=user;
         currentProfile=profile;
@@ -5676,14 +5888,7 @@ async function validateCurrentSession(force=false){
         return true;
     }catch(error){
         console.error("validateCurrentSession error:",error);
-        currentUser=null;
-        currentProfile=null;
-        lastSessionValidationAt=0;
-        try{ await supabaseClient.auth.signOut(); }catch(_signOutError){}
-        document.getElementById("app")?.classList.add("hidden");
-        document.getElementById("loginPage")?.classList.remove("hidden");
-        showMessage("Imeshindikana kuthibitisha session yako. Tafadhali ingia tena.","error");
-        return false;
+        return await terminateInvalidSession("Imeshindikana kuthibitisha session yako. Tafadhali ingia tena.");
     }finally{sessionValidationInProgress=false;}
 }
 
@@ -5721,8 +5926,8 @@ async function checkExistingSession(){
         }
 
         // Baada ya uthibitisho, loadApplication huandaa UI na data za mwanzo.
-        await loadApplication(data.session.user);
-        return true;
+        const loaded=await loadApplication(data.session.user);
+        return loaded!==false;
     }catch(error){
         console.error("checkExistingSession error:",error);
         currentUser=null;
@@ -5787,9 +5992,39 @@ if(supabaseClient){
             return;
         }
         if(event==="SIGNED_OUT"){
+            // SIGNED_OUT inaweza kutoka tab nyingine. Ficha dashboard na safisha
+            // kumbukumbu za akaunti hii kabla mtumiaji hajaingia tena.
+            applicationLoadSequence++;
             currentUser=null; currentProfile=null; contributionTarget=0; lastSessionValidationAt=0;
-            document.getElementById("app").classList.add("hidden");
-            document.getElementById("loginPage").classList.remove("hidden");
+            if(sessionValidationTimer){clearInterval(sessionValidationTimer);sessionValidationTimer=null;}
+            familyMembers=[]; contributions=[]; users=[]; familyContributionStatusRows=[];
+            systemNotifications=[]; disasterAssistance=[]; memberContributionHistoryRows=[];
+            memberFamilyDirectoryRows=[]; v23AuditRows=[]; v23HistoryRows=[];
+            memberReceiptDisplayName=""; memberCurrentContributionDebt=null; memberCurrentDeductionDebt=null; memberDebtSnapshotAt=null; familyContributionStatusLoadedAt=null; selectedRestoreBackup=null;
+            try{localStorage.removeItem(APP_PAGE_STORAGE_KEY);}catch(_storageError){}
+            const app=document.getElementById("app"); if(app) app.classList.add("hidden");
+            const login=document.getElementById("loginPage"); if(login) login.classList.remove("hidden");
+            for(const [id,value] of Object.entries({accountEmail:"-",accountName:"-",accountPhone:"Haijawekwa",accountRole:"-"})){
+                const element=document.getElementById(id); if(element) element.textContent=value;
+            }
+            return;
+        }
+        if(event==="SIGNED_IN" && session?.user && !localLoginInProgress && currentUser?.id!==session.user.id){
+            // V223: SIGNED_IN kutoka tab nyingine hushughulikiwa hata kama tab hii
+            // ilikuwa imetoka na currentUser ni null. Login ya ndani haizindui load mara mbili.
+            const incomingUser=session.user;
+            const sequence=++crossTabSignInSequence;
+            const app=document.getElementById("app"); if(app) app.classList.add("hidden");
+            const login=document.getElementById("loginPage"); if(login) login.classList.remove("hidden");
+            setTimeout(()=>{
+                if(sequence!==crossTabSignInSequence || localLoginInProgress) return;
+                // Ikiwa session bado ni ya mtumiaji huyu na app haijapakiwa, anzisha load.
+                if(currentUser?.id===incomingUser.id) return;
+                void loadApplication(incomingUser).catch(error=>{
+                    console.error("Cross-tab sign-in synchronization error:",error);
+                    showMessage("Imeshindikana kusawazisha akaunti iliyoingia kwenye kichupo kingine. Tafadhali jaribu kuingia tena.","error");
+                });
+            },0);
             return;
         }
         if(event==="TOKEN_REFRESHED" && session?.user) validateCurrentSession(true);
@@ -5799,6 +6034,49 @@ if(supabaseClient){
 /* =========================================================
    START
 ========================================================= */
+// V217: Ukurasa ukirejeshwa kutoka Back/Forward Cache, usionyeshe DOM ya zamani
+// mpaka session na profile vithibitishwe tena dhidi ya Supabase.
+let bfcacheRestoreInProgress=false;
+window.addEventListener("pageshow",async(event)=>{
+    if(!event.persisted || bfcacheRestoreInProgress) return;
+    bfcacheRestoreInProgress=true;
+    const app=document.getElementById("app");
+    const loginPage=document.getElementById("loginPage");
+    if(app) app.classList.add("hidden");
+    if(loginPage) loginPage.classList.remove("hidden");
+    try{
+        if(!supabaseClient) ensureClient();
+        const {data,error}=await supabaseClient.auth.getSession();
+        if(error) throw error;
+        const restoredUser=data?.session?.user;
+        if(!restoredUser){
+            currentUser=null;
+            currentProfile=null;
+            contributionTarget=0;
+            lastSessionValidationAt=0;
+            try{localStorage.removeItem(APP_PAGE_STORAGE_KEY);}catch(_e){}
+            return;
+        }
+        const valid=await validateCurrentSession(true);
+        if(!valid) return;
+        // Pakia upya data kutoka server badala ya kutegemea snapshot ya zamani.
+        await loadApplication(restoredUser);
+    }catch(error){
+        console.error("Back/Forward Cache session revalidation error:",error);
+        currentUser=null;
+        currentProfile=null;
+        contributionTarget=0;
+        lastSessionValidationAt=0;
+        try{localStorage.removeItem(APP_PAGE_STORAGE_KEY);}catch(_e){}
+        try{await supabaseClient?.auth.signOut();}catch(_signOutError){}
+        if(app) app.classList.add("hidden");
+        if(loginPage) loginPage.classList.remove("hidden");
+        showMessage("Session imeshindwa kuthibitishwa baada ya kurejesha ukurasa. Tafadhali ingia tena.","error");
+    }finally{
+        bfcacheRestoreInProgress=false;
+    }
+});
+
 window.addEventListener("resize",()=>{if(document.getElementById('financeChart')) drawFinanceChart();});
 
 window.addEventListener("DOMContentLoaded",()=>{
