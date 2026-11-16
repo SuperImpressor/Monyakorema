@@ -25,6 +25,14 @@
 
 
 
+
+<style>
+/* V258: Clear visual affordance for expandable contribution groups. */
+.staff-eligibility-accordion > summary::-webkit-details-marker { display: none; }
+.staff-eligibility-accordion > summary::marker { content: ""; }
+.staff-eligibility-accordion[open] .staff-eligibility-chevron { transform: rotate(180deg); }
+.staff-eligibility-accordion > summary { -webkit-tap-highlight-color: transparent; }
+</style>
 </head>
 
 <body class="min-h-screen bg-slate-100 text-slate-800">
@@ -166,7 +174,7 @@ Jisajili kama Mwanafamilia
       <div id="globalSearchResultsMobile" class="bg-white rounded-lg mt-2 border max-h-64 overflow-y-auto hidden"></div>
     </div>
     <div class="space-y-1">
-      <button data-page="dashboard" onclick="showPage('dashboard')" class="nav-button sidebar-link bg-blue-600 text-white"><span>🏠</span><span>Dashboard</span></button>
+      <button data-page="dashboard" onclick="showPage('dashboard')" class="nav-button sidebar-link bg-blue-600 text-white"><span>🏠</span><span>Muhtasari</span></button>
       <button id="memberDirectoryNav" data-page="member-directory" onclick="showPage('member-directory')" class="nav-button sidebar-link hidden"><span>👨‍👩‍👧</span><span>Orodha ya Wanafamilia</span></button>
       <button id="staffEligibilityNav" data-page="staff-eligibility" onclick="showPage('staff-eligibility')" class="nav-button sidebar-link hidden"><span>📋</span><span>Makundi ya Uchangiaji</span></button>
       <button data-page="family" onclick="showPage('family')" class="nav-button sidebar-link"><span>👨‍👩‍👧</span><span>Wanafamilia</span></button>
@@ -231,7 +239,7 @@ Jisajili kama Mwanafamilia
 </div>
 <div class="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
 <div>
-<h2 class="text-2xl font-bold">Dashboard</h2>
+<h2 class="text-2xl font-bold">Muhtasari</h2>
 <p class="text-slate-500">Karibu kwenye mfumo wa Mo'Nyakorema O'Rila.</p>
 <p id="dashboardLastUpdated" class="text-xs text-slate-400 mt-1">Taarifa zinapakia...</p>
 </div>
@@ -379,6 +387,7 @@ Jisajili kama Mwanafamilia
       </div>
       <span id="staffEligibilityTotal" class="text-xs sm:text-sm text-slate-500 self-center" aria-live="polite">Inapakia...</span>
     </div>
+    <p class="text-xs sm:text-sm font-semibold text-blue-800 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2.5 mb-3 shadow-sm">👆 Gusa kundi lolote kuona orodha ya wanafamilia. Gusa tena kulifunga.</p>
     <div id="staffEligibilityGroups" class="space-y-3" aria-live="polite"><p class="text-sm text-slate-500">Inapakia makundi...</p></div>
   </div>
 </section>
@@ -806,7 +815,7 @@ Jisajili kama Mwanafamilia
 <div class="bg-white rounded-xl shadow p-6">
 <div class="mb-5 rounded-lg bg-blue-50 border border-blue-100 p-4">
 <p class="font-semibold text-blue-900">🎯 Lengo la Mchango</p>
-<p class="text-sm text-blue-800 mt-1">Kiasi hiki ndicho kitatumika kuhesabu progress bar ya Dashboard.</p>
+<p class="text-sm text-blue-800 mt-1">Kiasi hiki ndicho kitatumika kuhesabu progress bar ya Muhtasari.</p>
 </div>
 <label class="block text-sm font-semibold mb-1">Lengo la Mchango (TZS)</label>
 <input id="contributionTargetInput" type="number" min="0" step="1" class="w-full border rounded-lg px-4 py-3 mb-2" placeholder="Mfano: 10000000">
@@ -2456,7 +2465,16 @@ host.innerHTML=definitions.map(group=>{
 const rows=filtered.filter(x=>x.contribution_eligibility===group.key);
 const styles=group.tone==="emerald"?"border-emerald-200 bg-emerald-50 text-emerald-900":group.tone==="amber"?"border-amber-200 bg-amber-50 text-amber-900":"border-slate-200 bg-slate-50 text-slate-800";
 const names=rows.length?rows.map((person,i)=>`<li class="py-2 border-b last:border-0 border-slate-100 flex gap-3"><span class="text-xs text-slate-400 tabular-nums">${i+1}.</span><span>${escapeHtml(person.displayName||"Jina halijakamilika")}</span></li>`).join(""):'<li class="py-3 text-sm text-slate-500">Hakuna mwanafamilia katika kundi hili kwa utafutaji huu.</li>';
-return `<details class="rounded-xl border overflow-hidden"><summary class="${styles} cursor-pointer list-none p-4 flex items-center justify-between gap-3 font-bold"><span>${group.title}</span><span class="rounded-full bg-white/80 px-3 py-1 text-sm">${rows.length.toLocaleString("en-US")}</span></summary><ol class="px-4 py-2">${names}</ol></details>`;
+return `<details class="staff-eligibility-accordion rounded-xl border overflow-hidden">
+<summary class="${styles} cursor-pointer list-none p-4 flex items-center justify-between gap-3 font-bold hover:brightness-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset" aria-label="${group.title}. Gusa kufungua au kufunga orodha ya majina.">
+<span class="min-w-0 flex-1">${group.title}</span>
+<span class="flex items-center gap-3 shrink-0">
+<span class="rounded-full bg-white/80 px-3 py-1 text-sm tabular-nums">${rows.length.toLocaleString("en-US")}</span>
+<span class="staff-eligibility-chevron inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/70 text-current text-xl leading-none transition-transform duration-200" aria-hidden="true">⌄</span>
+</span>
+</summary>
+<ol class="px-4 py-2">${names}</ol>
+</details>`;
 }).join("");
 }
 
