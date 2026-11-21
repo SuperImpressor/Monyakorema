@@ -1,8 +1,10 @@
 <!DOCTYPE html>
+<!-- V265: Add Administrator-only pending audit-event monitoring to the Audit Trail page. -->
+<!-- V264: Backup restore preview and completion report explicitly disclose skipped repayment-payment records. -->
 <!-- V252: Repayment requests reuse a persistent idempotency key after uncertain network outcomes. -->
 
 <html lang="sw">
-<head>
+<head>\n<!-- V261: Add eligible family-member count to the main summary dashboard using the existing contribution eligibility rule. -->
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -266,7 +268,7 @@ Jisajili kama Mwanafamilia
 </div>
 </div>
 
-<div class="grid grid-cols-2 lg:grid-cols-5 gap-3 dashboard-stat-grid">
+<div class="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3 dashboard-stat-grid">
 <div class="bg-white rounded-xl shadow-sm p-3 sm:p-4 min-w-0 dashboard-stat-card">
 <p class="text-slate-500 text-xs sm:text-sm leading-snug">Idadi ya Wanafamilia</p>
 <p id="dashboardMembers" class="text-2xl sm:text-3xl font-bold mt-1.5">0</p>
@@ -274,6 +276,11 @@ Jisajili kama Mwanafamilia
 <div class="bg-white rounded-xl shadow-sm p-3 sm:p-4 min-w-0 dashboard-stat-card">
 <p class="text-slate-500 text-xs sm:text-sm leading-snug">Idadi ya Michango</p>
 <p id="dashboardContributions" class="text-2xl sm:text-3xl font-bold mt-1.5">0</p>
+</div>
+<div class="bg-emerald-50 border border-emerald-100 rounded-xl shadow-sm p-3 sm:p-4 min-w-0 dashboard-stat-card">
+<p class="text-emerald-800 text-xs sm:text-sm leading-snug font-semibold">Wanafamilia wanaopaswa kuchangia</p>
+<p id="dashboardEligibleMembers" class="text-2xl sm:text-3xl font-extrabold text-emerald-900 mt-1.5">—</p>
+<p class="text-[11px] sm:text-xs text-emerald-700 mt-1">Wenye wajibu wa kuchangia</p>
 </div>
 <div class="bg-white rounded-xl shadow-sm p-3 sm:p-4 min-w-0 dashboard-stat-card">
 <p class="text-slate-500 text-xs sm:text-sm leading-snug">Jumla ya Fedha Zote</p>
@@ -673,6 +680,14 @@ Jisajili kama Mwanafamilia
     <div class="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-4 mb-4">
       <div class="font-bold">Audit Trail ni kumbukumbu ya ufuatiliaji</div>
       <div class="text-sm mt-1">Rekodi hizi ni za kusoma na kufuatilia matukio. Mfumo hautoi kitufe cha kuzihariri au kuzifuta kwenye ukurasa huu.</div>
+    </div>
+    <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-4">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+        <div><div class="font-bold text-slate-800">Ufuatiliaji wa Audit Events zinazohitaji ukaguzi</div><div class="text-xs text-slate-600 mt-1">Huonyesha rekodi za audit zenye hali PENDING ndani ya matukio yaliyopakiwa (hadi rekodi 500 za karibuni).</div></div>
+        <span id="v265PendingCount" class="inline-flex rounded-full bg-amber-100 text-amber-800 px-3 py-1 text-sm font-bold">0 PENDING</span>
+      </div>
+      <div class="text-xs text-slate-600 mb-3">Kumbuka: tukio ambalo halikuweza kuandikwa kabisa kwenye audit_logs haliwezi kuonekana hapa; linahitaji kufuatiliwa kupitia server logs.</div>
+      <div class="overflow-x-auto"><table class="v23-table text-sm"><thead><tr><th>Tarehe/Muda</th><th>Mtumiaji</th><th>Kitendo</th><th>Mtumiaji anayelengwa</th><th>Hali</th></tr></thead><tbody id="v265PendingBody"><tr><td colspan="5" class="v23-empty">Hakuna taarifa zilizopakiwa.</td></tr></tbody></table></div>
     </div>
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
       <div class="v23-kpi"><div class="text-xs text-slate-500">Matukio yaliyoonyeshwa</div><div id="v23AuditCount" class="n">0</div></div>
@@ -1747,7 +1762,25 @@ if(ids.length){const p=await supabaseClient.from('profiles').select('id,first_na
 v23RenderAudit();
 }catch(e){console.error(e);document.getElementById('v23AuditBody').innerHTML='<tr><td colspan="6" class="v23-empty v23-danger">Imeshindikana kupakia Audit Trail: '+escapeHtml(e.message)+'</td></tr>';}
 }
+function v265RenderPendingAudit(){
+const pending=v23AuditRows.filter(r=>{
+const data=r.new_data&&typeof r.new_data==='object'?r.new_data:{};
+const old=r.old_data&&typeof r.old_data==='object'?r.old_data:{};
+return String(data.status||data.audit_status||old.status||old.audit_status||'').toUpperCase()==='PENDING';
+});
+const count=document.getElementById('v265PendingCount');
+const body=document.getElementById('v265PendingBody');
+if(count)count.textContent=pending.length+' PENDING';
+if(!body)return;
+if(!pending.length){body.innerHTML='<tr><td colspan="5" class="v23-empty">Hakuna rekodi za PENDING zilizopo kwenye matukio yaliyopakiwa.</td></tr>';return;}
+body.innerHTML=pending.map(r=>{
+const data=r.new_data&&typeof r.new_data==='object'?r.new_data:{};
+const target=data.target_user_id||r.record_id||'-';
+return '<tr><td>'+escapeHtml(v23DateTime(r.created_at))+'</td><td>'+escapeHtml(r.actor_name||r.user_id||'-')+'</td><td>'+escapeHtml(v23ActionLabel(r.action))+'</td><td>'+escapeHtml(target)+'</td><td><span class="v23-badge bg-amber-100 text-amber-800">PENDING</span></td></tr>';
+}).join('');
+}
 function v23RenderAudit(){
+v265RenderPendingAudit();
 const q=(document.getElementById('v23AuditSearch')?.value||'').toLowerCase().trim();
 const a=document.getElementById('v23AuditAction')?.value||'';
 const t=document.getElementById('v23AuditTable')?.value||'';
@@ -2152,7 +2185,9 @@ selectedRestoreBackup=b;
 const names={family_members:'Wanafamilia',contributions:'Michango',fund_expenses:'Matumizi ya mfuko',disaster_assistance:'Msaada wa maafa',disaster_contribution_deductions:'Makato ya michango',disaster_contribution_deduction_payments:'Malipo ya madeni ya makato',system_settings:'Mipangilio',system_notifications:'Taarifa'};
 const auditWarning='<p class="mt-2 text-amber-800">Kwa usalama, historia ya shughuli (audit logs) haiingizwe kutoka backup. Historia iliyopo kwenye database inalindwa tofauti na haitabadilishwa na urejeshaji huu.</p>';
 const recipientWarning=validation.notificationRecipientsMissingFromBackup?'<p class="mt-2 text-amber-800">Tahadhari: taarifa '+validation.notificationRecipientsMissingFromBackup+' zina mpokeaji ambaye hayupo kwenye orodha ya profiles ya backup. Kama akaunti hiyo haipo kwenye mradi lengwa, urejeshaji unaweza kushindwa.</p>':'';
-preview.innerHTML='<p class="font-bold mb-2">Backup imesomwa — '+escapeHtml(b.exported_at||'Tarehe haijatajwa')+'</p><ul class="space-y-1">'+RESTORE_TABLE_ORDER.map(t=>'<li class="flex justify-between gap-3"><span>'+names[t]+'</span><strong>'+b.data[t].length.toLocaleString('sw-TZ')+'</strong></li>').join('')+'</ul><p class="mt-3 text-amber-800">Ukaguzi wa awali umepita: hakuna ID zinazojirudia au marejeo ya ndani yaliyokosekana. Urejeshaji huu ni wa kuongeza tu; rekodi zilizopo hazitaandikwa upya. Profaili/akaunti za Auth na nywila hazitarejeshwa. Tumia backup hii kwenye mradi uleule wa Supabase uliyoitengeneza inapowezekana; kuhamisha kwenye mradi mwingine kunaweza kusababisha migongano ya ID na mahusiano.</p>'+recipientWarning+auditWarning+'<p class="mt-2 text-slate-700">Historia ya shughuli hairejeshwi kutoka backup. Akaunti za Auth na nywila hazitarejeshwa; kurejesha kwenye mradi tofauti kunaweza kushindwa kwa marejeo ya watumiaji.</p>';
+const repaymentCount=b.data.disaster_contribution_deduction_payments.length;
+const repaymentWarning='<p class="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900"><strong>Muhimu — Malipo ya madeni ya makato:</strong> Backup ina rekodi '+repaymentCount.toLocaleString('sw-TZ')+'. Toleo hili la urejeshaji haliziingizi kwenye database; rekodi zote '+repaymentCount.toLocaleString('sw-TZ')+' zitarukwa. Hivyo usichukulie kuwa historia hiyo imerejeshwa.</p>';
+preview.innerHTML='<p class="font-bold mb-2">Backup imesomwa — '+escapeHtml(b.exported_at||'Tarehe haijatajwa')+'</p><ul class="space-y-1">'+RESTORE_TABLE_ORDER.map(t=>'<li class="flex justify-between gap-3"><span>'+names[t]+'</span><strong>'+b.data[t].length.toLocaleString('sw-TZ')+'</strong></li>').join('')+'</ul><p class="mt-3 text-amber-800">Ukaguzi wa awali umepita: hakuna ID zinazojirudia au marejeo ya ndani yaliyokosekana. Urejeshaji huu ni wa kuongeza tu; rekodi zilizopo hazitaandikwa upya. Profaili/akaunti za Auth na nywila hazitarejeshwa. Tumia backup hii kwenye mradi uleule wa Supabase uliyoitengeneza inapowezekana; kuhamisha kwenye mradi mwingine kunaweza kusababisha migongano ya ID na mahusiano.</p>'+repaymentWarning+recipientWarning+auditWarning+'<p class="mt-2 text-slate-700">Historia ya shughuli hairejeshwi kutoka backup. Akaunti za Auth na nywila hazitarejeshwa; kurejesha kwenye mradi tofauti kunaweza kushindwa kwa marejeo ya watumiaji.</p>';
 button.disabled=false;
 }catch(e){selectedRestoreBackup=null;preview.textContent='Imeshindikana kusoma backup: '+(e.message||e);}
 };
@@ -2174,7 +2209,9 @@ const {data,error}=await supabaseClient.rpc('restore_monyakorema_backup',{p_back
 if(error) throw new Error(error.message||'Supabase imerudisha hitilafu.');
 const results=(data&&data.tables&&typeof data.tables==='object')?data.tables:{};
 const labels={family_members:'Wanafamilia',contributions:'Michango',fund_expenses:'Matumizi',disaster_assistance:'Msaada wa maafa',disaster_contribution_deductions:'Makato',disaster_contribution_deduction_payments:'Malipo ya madeni ya makato',system_settings:'Mipangilio',system_notifications:'Taarifa'};
-const lines=RESTORE_TABLE_ORDER.map(t=>`${labels[t]}: zimeongezwa ${Number(results[t]?.inserted||0)}, zimerukwa ${Number(results[t]?.skipped||0)}`);
+const lines=RESTORE_TABLE_ORDER.filter(t=>t!=='disaster_contribution_deduction_payments').map(t=>`${labels[t]}: zimeongezwa ${Number(results[t]?.inserted||0)}, zimerukwa ${Number(results[t]?.skipped||0)}`);
+const skippedRepayments=Number(data?.repayment_payments_skipped??selectedRestoreBackup?.data?.disaster_contribution_deduction_payments?.length??0);
+lines.push(`Malipo ya madeni ya makato: HAYAKUREJESHWA (${skippedRepayments} yamerukwa)`);
 status.textContent='Urejeshaji wa transaction umekamilika. '+lines.join(' | ')+(data?.profiles_skipped?' | Profaili zimeachwa: '+data.profiles_skipped:'');
 alert(status.textContent+' Rekodi zilizokuwepo hazikuandikwa upya.');
 selectedRestoreBackup=null;document.getElementById('restoreBackupFile').value='';document.getElementById('restoreBackupPreview').classList.add('hidden');document.getElementById('restoreBackupConfirm').checked=false;
@@ -2711,6 +2748,8 @@ const setDashText=(id,value)=>{const el=document.getElementById(id);if(el)el.tex
 const setDashMoney=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent='TZS '+money(value);};
 
 setDashText('dashboardMembers',memberList.length);
+// V261: Use the same eligibility rule as contribution-debt calculations.
+setDashText('dashboardEligibleMembers',memberList.filter(member=>isContributionEligible(member)).length);
 const total=rows.reduce((sum,row)=>sum+Math.max(0,Number(row.amount||0)),0);
 const totalExpenses=expenses.reduce((sum,row)=>sum+Math.max(0,Number(row.amount||0)),0);
 const totalDisasterPaid=disasterRows.filter(row=>row.payment_status==='Imelipwa').reduce((sum,row)=>sum+Math.max(0,Number(row.amount||0)),0);
@@ -3930,7 +3969,8 @@ if(insightBox) insightBox.innerHTML=[
 ].map(([label,value])=>`<div class="rounded-xl bg-slate-50 p-4"><div class="text-xs text-slate-500">${label}</div><div class="font-bold text-lg mt-1">${value}</div></div>`).join('');
 
 window.currentReportRows=rows;
-window.currentReportMeta={from,to,members:members.length,active:activeMembers.length,total,familyPeriodTotal,periodDue};
+const eligibleMembersCount=activeMembers.filter(member=>isContributionEligible(member)).length;
+window.currentReportMeta={from,to,members:members.length,active:activeMembers.length,eligibleMembers:eligibleMembersCount,total,familyPeriodTotal,periodDue};
 
 
 
@@ -4146,12 +4186,13 @@ if(followupCountEl) followupCountEl.textContent=window.currentContributionFollow
 filterContributionFollowup();
 
 if(summary) summary.innerHTML=[
-['Wanafamilia wote',members.length],
-['Wanafamilia hai',activeMembers.length],
-['Idadi ya michango',rows.length],
-['Jumla ya michango',reportMoney(total)],
-['Wachangiaji tofauti',uniqueContributors]
-].map(x=>`<div class="bg-white rounded-xl shadow p-5"><p class="text-slate-500 text-sm">${x[0]}</p><p class="text-2xl font-bold mt-2">${x[1]}</p></div>`).join('');
+['Wanafamilia wote',members.length,'bg-white text-slate-900'],
+['Wanafamilia hai',activeMembers.length,'bg-white text-slate-900'],
+['Wanafamilia wanaopaswa kuchangia',eligibleMembersCount,'bg-emerald-50 text-emerald-900'],
+['Idadi ya michango',rows.length,'bg-white text-slate-900'],
+['Jumla ya michango',reportMoney(total),'bg-white text-slate-900'],
+['Wachangiaji tofauti',uniqueContributors,'bg-white text-slate-900']
+].map(x=>`<div class="${x[2]} rounded-xl shadow p-5 border ${x[2].includes('emerald')?'border-emerald-200':'border-slate-100'}"><p class="text-sm ${x[2].includes('emerald')?'text-emerald-800':'text-slate-500'}">${x[0]}</p><p class="text-2xl font-bold mt-2">${x[1]}</p></div>`).join('');
 
 
 const aliveCount=members.filter(m=>m.life_status==='Hai').length;
@@ -4284,7 +4325,7 @@ const typeSummary=Object.entries(typeTotals).map(([k,v])=>`<tr><td>${escapeHtml(
 const ledgerRows=Array.isArray(window.currentReportLedgerRows)?window.currentReportLedgerRows:[];
 const ledgerSummary=window.currentReportLedgerSummary||{};
 const ledgerHtml=ledgerRows.length?ledgerRows.map(r=>`<tr><td>${escapeHtml(r.memberName||'-')}</td><td class="num">${r.months||0}</td><td class="money">${reportMoney(r.due)}</td><td class="money">${reportMoney(r.total)}</td><td class="money">${reportMoney(r.debt)}</td><td class="money">${reportMoney(r.excess)}</td><td class="money">${reportMoney(r.deducted)}</td><td class="money">${reportMoney(r.availableBalance)}</td></tr>`).join(''):'<tr><td colspan="8">Hakuna wanafamilia.</td></tr>';
-win.document.write(`<!doctype html><html lang="sw"><head><meta charset="utf-8"><title>Ripoti ya Mo'Nyakorema O'Rila</title><style>body{font-family:Arial,sans-serif;padding:28px;color:#111;}h1{margin-bottom:4px;}p{color:#555;}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:20px 0;}.card{border:1px solid #ddd;border-radius:8px;padding:12px;}.label{font-size:12px;color:#666;}.value{font-size:20px;font-weight:bold;margin-top:5px;}table{width:100%;border-collapse:collapse;margin-top:14px;}th,td{border:1px solid #ddd;padding:7px;text-align:left;font-size:12px;}th{background:#f1f5f9;}.money,.num{text-align:right;font-weight:bold;}.section{margin-top:28px;}.note{font-size:11px;color:#666;}@media print{button{display:none;}.section{break-inside:avoid;}}</style></head><body><h1>Familia ya Mo'Nyakorema O'Rila</h1><p>Ripoti na Uchambuzi • Kipindi: ${escapeHtml(period)}</p><div class="cards"><div class="card"><div class="label">Wanafamilia wote</div><div class="value">${meta.members||0}</div></div><div class="card"><div class="label">Wanafamilia hai</div><div class="value">${meta.active||0}</div></div><div class="card"><div class="label">Idadi ya michango</div><div class="value">${rows.length}</div></div><div class="card"><div class="label">Jumla ya michango ya kipindi</div><div class="value">${reportMoney(meta.total||0)}</div></div></div><div class="section"><h2>Hali ya Mchango ya Wanafamilia</h2><table><thead><tr><th>Mwanafamilia</th><th>Miezi ya kuchangia</th><th>Wajibu</th><th>Kiasi alichochanga</th><th>Kiasi anachodaiwa</th><th>Ziada</th><th>Makato</th><th>Salio</th></tr></thead><tbody>${ledgerHtml}</tbody><tfoot><tr><th colspan="2">Jumla</th><th class="money">${reportMoney(ledgerSummary.due||0)}</th><th class="money">${reportMoney(ledgerSummary.total||0)}</th><th class="money">${reportMoney(ledgerSummary.debt||0)}</th><th class="money">${reportMoney(ledgerSummary.excess||0)}</th><th class="money">${reportMoney(ledgerSummary.deducted||0)}</th><th class="money">${reportMoney(ledgerSummary.available||0)}</th></tr></tfoot></table><p class="note">Ledger hii inaonyesha hali ya mchango hadi mwezi wa sasa, kuanzia September 2026; vichujio vya ripoti havibadilishi wajibu wa mwezi wa sasa.</p></div><div class="section"><h2>Muhtasari wa Aina za Wachangiaji</h2><table><thead><tr><th>Aina</th><th>Kiasi</th></tr></thead><tbody>${typeSummary||'<tr><td colspan="2">Hakuna data</td></tr>'}</tbody></table></div><div class="section"><h2>Michango ya Kipindi</h2><table><thead><tr><th>Tarehe</th><th>Risiti</th><th>Mchangiaji</th><th>Aina</th><th>Kiasi</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${escapeHtml(formatDisplayDate(r.contribution_date))}</td><td>${escapeHtml(r.receipt_number||'-')}</td><td>${escapeHtml(fullName(r)||r.phone||'-')}</td><td>${escapeHtml(r.contributor_type||'-')}</td><td class="money">${reportMoney(r.amount)}</td></tr>`).join('')||'<tr><td colspan="5">Hakuna michango katika kipindi hiki.</td></tr>'}</tbody></table></div><p class="note" style="margin-top:30px">Imetolewa kutoka kwenye mfumo wa Familia ya Mo'Nyakorema O'Rila.</p></body></html>`);
+win.document.write(`<!doctype html><html lang="sw"><head><meta charset="utf-8"><title>Ripoti ya Mo'Nyakorema O'Rila</title><style>body{font-family:Arial,sans-serif;padding:28px;color:#111;}h1{margin-bottom:4px;}p{color:#555;}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:20px 0;}.card{border:1px solid #ddd;border-radius:8px;padding:12px;}.label{font-size:12px;color:#666;}.value{font-size:20px;font-weight:bold;margin-top:5px;}table{width:100%;border-collapse:collapse;margin-top:14px;}th,td{border:1px solid #ddd;padding:7px;text-align:left;font-size:12px;}th{background:#f1f5f9;}.money,.num{text-align:right;font-weight:bold;}.section{margin-top:28px;}.note{font-size:11px;color:#666;}@media print{button{display:none;}.section{break-inside:avoid;}}</style></head><body><h1>Familia ya Mo'Nyakorema O'Rila</h1><p>Ripoti na Uchambuzi • Kipindi: ${escapeHtml(period)}</p><div class="cards"><div class="card"><div class="label">Wanafamilia wote</div><div class="value">${meta.members||0}</div></div><div class="card"><div class="label">Wanafamilia hai</div><div class="value">${meta.active||0}</div></div><div class="card" style="background:#ecfdf5;border-color:#a7f3d0"><div class="label" style="color:#065f46">Wanafamilia wanaopaswa kuchangia</div><div class="value" style="color:#064e3b">${meta.eligibleMembers||0}</div></div><div class="card"><div class="label">Idadi ya michango</div><div class="value">${rows.length}</div></div><div class="card"><div class="label">Jumla ya michango ya kipindi</div><div class="value">${reportMoney(meta.total||0)}</div></div></div><div class="section"><h2>Hali ya Mchango ya Wanafamilia</h2><table><thead><tr><th>Mwanafamilia</th><th>Miezi ya kuchangia</th><th>Wajibu</th><th>Kiasi alichochanga</th><th>Kiasi anachodaiwa</th><th>Ziada</th><th>Makato</th><th>Salio</th></tr></thead><tbody>${ledgerHtml}</tbody><tfoot><tr><th colspan="2">Jumla</th><th class="money">${reportMoney(ledgerSummary.due||0)}</th><th class="money">${reportMoney(ledgerSummary.total||0)}</th><th class="money">${reportMoney(ledgerSummary.debt||0)}</th><th class="money">${reportMoney(ledgerSummary.excess||0)}</th><th class="money">${reportMoney(ledgerSummary.deducted||0)}</th><th class="money">${reportMoney(ledgerSummary.available||0)}</th></tr></tfoot></table><p class="note">Ledger hii inaonyesha hali ya mchango hadi mwezi wa sasa, kuanzia September 2026; vichujio vya ripoti havibadilishi wajibu wa mwezi wa sasa.</p></div><div class="section"><h2>Muhtasari wa Aina za Wachangiaji</h2><table><thead><tr><th>Aina</th><th>Kiasi</th></tr></thead><tbody>${typeSummary||'<tr><td colspan="2">Hakuna data</td></tr>'}</tbody></table></div><div class="section"><h2>Michango ya Kipindi</h2><table><thead><tr><th>Tarehe</th><th>Risiti</th><th>Mchangiaji</th><th>Aina</th><th>Kiasi</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${escapeHtml(formatDisplayDate(r.contribution_date))}</td><td>${escapeHtml(r.receipt_number||'-')}</td><td>${escapeHtml(fullName(r)||r.phone||'-')}</td><td>${escapeHtml(r.contributor_type||'-')}</td><td class="money">${reportMoney(r.amount)}</td></tr>`).join('')||'<tr><td colspan="5">Hakuna michango katika kipindi hiki.</td></tr>'}</tbody></table></div><p class="note" style="margin-top:30px">Imetolewa kutoka kwenye mfumo wa Familia ya Mo'Nyakorema O'Rila.</p></body></html>`);
 win.document.close();
 win.focus();
 setTimeout(()=>win.print(),300);
@@ -4302,6 +4343,7 @@ const esc=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
 const lines=[];
 lines.push(['RIPOTI YA MO\'NYAKOREMA O\'RILA']);
 lines.push(['Kipindi',meta.from&&meta.to?`${meta.from} hadi ${meta.to}`:(meta.from?`Kuanzia ${meta.from}`:(meta.to?`Hadi ${meta.to}`:'Vipindi vyote'))]);
+lines.push(['Wanafamilia wanaopaswa kuchangia',meta.eligibleMembers||0]);
 lines.push([]);
 lines.push(['HALI YA MCHANGO YA WANAFAMILIA']);
 lines.push(['Mwanafamilia','Miezi','Wajibu','Kiasi alichochanga','Deni','Ziada','Makato','Salio']);
